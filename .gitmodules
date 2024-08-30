@@ -1,0 +1,6 @@
+[submodule "uc/ucdev"]
+	path = uc/ucdev
+	url = https://github.com/a-v-s/ucdev
+[submodule "pc/pcdev"]
+	path = pc/pcdev
+	url = https://github.com/a-v-s/pcdev
