@@ -1,8 +1,18 @@
 
-default: usb_dongle ac_switch
+default: prepare | usb_dongle ac_switch
+
+.PHONY: usb_dongle ac_switch
+
+usb_dongle:
+	make -C usb_dongle
+
+ac_switch:
+	make -C ac_switch
 
 
 prepare:
+	git submodule init ucdev
+	git submodule update
 	cd ucdev && git submodule init ext/CMSIS_5
 	cd ucdev && git submodule init ext/RTT
 	cd ucdev && git submodule init ext/stm32/stm32f1xx_hal_driver
