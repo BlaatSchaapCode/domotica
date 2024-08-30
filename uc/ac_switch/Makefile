@@ -35,9 +35,9 @@ C_SOURCES += $(LIBHALGLUE_ROOT)/bshal/bshal_spim.c
 
 C_SOURCES += $(BSRADIO_DIR)/bsradio.c
 C_SOURCES += $(BSRADIO_DIR)/sxv1.c
-C_SOURCES += $(BSRADIO_DIR)/si4x3x.c
-C_SOURCES += $(BSRADIO_DIR)/si4x6x.c
-C_SOURCES += $(BSRADIO_DIR)/magic.c
+#C_SOURCES += $(BSRADIO_DIR)/si4x3x.c
+#C_SOURCES += $(BSRADIO_DIR)/si4x6x.c
+#C_SOURCES += $(BSRADIO_DIR)/magic.c
 
 C_SOURCES += $(UCDEV_ROOT)/lib/bsprot/protocol.c
 

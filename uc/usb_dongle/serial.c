@@ -15,6 +15,6 @@ uint32_t get_serial(void) {
 
 char *get_serial_string(void) {
   static char serial[9];
-  snprintf(serial, 9, "%08X", get_serial());
+  snprintf(serial, 9, "%08lX", get_serial());
   return serial;
 }

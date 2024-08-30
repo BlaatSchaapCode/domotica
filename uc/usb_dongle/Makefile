@@ -43,9 +43,9 @@ C_SOURCES += $(LIBHALGLUE_ROOT)/bshal/bshal_spim.c
 
 C_SOURCES += $(BSRADIO_DIR)/bsradio.c
 C_SOURCES += $(BSRADIO_DIR)/sxv1.c
-C_SOURCES += $(BSRADIO_DIR)/si4x3x.c
-C_SOURCES += $(BSRADIO_DIR)/si4x6x.c
-C_SOURCES += $(BSRADIO_DIR)/magic.c
+#C_SOURCES += $(BSRADIO_DIR)/si4x3x.c
+#C_SOURCES += $(BSRADIO_DIR)/si4x6x.c
+#C_SOURCES += $(BSRADIO_DIR)/magic.c
 
 C_INCLUDES += $(BSRADIO_DIR)
 C_INCLUDES += $(BSPROT_DIR)
@@ -71,9 +71,6 @@ C_SOURCES += $(LIBHALGLUE_ROOT)/bshal/stm32/bshal_i2cm_stm32f1.c
 C_SOURCES += $(LIBHALGLUE_ROOT)/bshal/stm32/bshal_spim_stm32f1.c
 C_SOURCES += $(LIBHALGLUE_ROOT)/bshal/stm32/bshal_gpio_stm32.c
 C_SOURCES += $(LIBHALGLUE_ROOT)/bshal/stm32/bshal_i2cm_stm32.c
-
-
-
 
 # link script
 LDSCRIPT = $(shell tr '[:upper:]' '[:lower:]' <<< $(MCU)).ld

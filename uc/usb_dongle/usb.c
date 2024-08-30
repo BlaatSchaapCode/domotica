@@ -85,6 +85,7 @@ bscp_usbd_handle_user_request(void *handle, usb_setuprequest_t *req, void **buf,
 
     usbd_bos_capability_microsoft_descriptor_t *bos_winusb = add_descriptor(
         handle, sizeof(usbd_bos_capability_microsoft_descriptor_t));
+    (void)bos_winusb;
 
     bos_respose.bos_winusb.bLength =
         sizeof(usbd_bos_capability_microsoft_descriptor_t);
@@ -239,7 +240,7 @@ void bscp_usbd_demo_setup_descriptors(bscp_usbd_handle_t *handle) {
   //	handle->descriptor_string[3] = add_string_descriptor_utf16(handle,
   //			serial_number);
 
-  extern char *get_serial_string(void);
+  extern uint8_t *get_serial_string(void);
   handle->descriptor_string[3] =
       add_string_descriptor_utf8(handle, get_serial_string());
 

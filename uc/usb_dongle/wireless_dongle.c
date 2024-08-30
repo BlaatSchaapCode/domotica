@@ -39,34 +39,20 @@
 #include <stdfix.h>
 // Might need to verify this also holds for latest CMSIS, and switch to upstream
 
-#include "bshal_delay.h"
-#include "bshal_i2cm.h"
-#include "bshal_spim.h"
-
-// #include "lm75b.h"
-// #include "sht3x.h"
-// #include "bh1750.h"
-// #include "hcd1080.h"
-// #include "si70xx.h"
-// #include "ccs811.h"
-// #include "bmp280.h"
-// #include "scd4x.h"
-
-#include "si4x3x.h"
-#include "si4x6x.h"
-#include "sxv1.h"
-
-#include "protocol.h"
-#include "sensor_protocol.h"
+#include <stdio.h>
 
 #include "SEGGER_RTT.h"
+#include "bshal_delay.h"
 #include "bshal_gpio_stm32.h"
 #include "bshal_i2cm.h"
 #include "bshal_i2cm_stm32.h"
+#include "bshal_spim.h"
+#include "protocol.h"
+#include "sensor_protocol.h"
 #include "spi_flash.h"
+#include "sxv1.h"
 #include "timer.h"
 #include "usbd.h"
-#include <stdio.h>
 
 static bshal_i2cm_instance_t m_i2c;
 bshal_spim_instance_t spi_flash_config;
@@ -102,7 +88,7 @@ bshal_i2cm_instance_t *i2c_init(void) {
 
 void spi_flash_init(void) {
   spi_flash_config.frequency = 1000000;
-  spi_flash_config.bit_order = 0; // MSB
+  spi_flash_config.bit_order = 0;  // MSB
   spi_flash_config.mode = 0;
 
   spi_flash_config.hw_nr = 1;
@@ -154,29 +140,29 @@ int radio_init(bsradio_instance_t *bsradio) {
     puts("rfconfig missing");
 
     switch (bsradio->hwconfig.frequency_band) {
-    case 434:
-      //		bsradio->driver.set_frequency(bsradio, 434000);
-      //		bsradio->driver.set_tx_power(bsradio, 10);
-      bsradio->rfconfig.frequency_kHz = 434000;
-      bsradio->rfconfig.tx_power_dBm = 10;
+      case 434:
+        //		bsradio->driver.set_frequency(bsradio, 434000);
+        //		bsradio->driver.set_tx_power(bsradio, 10);
+        bsradio->rfconfig.frequency_kHz = 434000;
+        bsradio->rfconfig.tx_power_dBm = 10;
 
-      break;
-    case 868:
-      bsradio->rfconfig.frequency_kHz = 869850;
-      //		bsradio->rfconfig.frequency_kHz = 870000;
-      bsradio->rfconfig.tx_power_dBm = 0;
-      break;
-    case 915:
-      // Sorry Americans... your FCC only allows very weak signals
-      //		bsradio->driver.set_frequency(bsradio, 915000);
-      //		bsradio->driver.set_tx_power(bsradio, -3);
-      bsradio->rfconfig.frequency_kHz = 915000;
-      bsradio->rfconfig.tx_power_dBm = -3;
-      break;
+        break;
+      case 868:
+        bsradio->rfconfig.frequency_kHz = 869850;
+        //		bsradio->rfconfig.frequency_kHz = 870000;
+        bsradio->rfconfig.tx_power_dBm = 7;
+        break;
+      case 915:
+        // Sorry Americans... your FCC only allows very weak signals
+        //		bsradio->driver.set_frequency(bsradio, 915000);
+        //		bsradio->driver.set_tx_power(bsradio, -3);
+        bsradio->rfconfig.frequency_kHz = 915000;
+        bsradio->rfconfig.tx_power_dBm = -3;
+        break;
     }
 
     //	bsradio->rfconfig.modulation_shaping = 0;
-    bsradio->rfconfig.modulation_shaping = 5; // 0.5 gfsk
+    bsradio->rfconfig.modulation_shaping = 5;  // 0.5 gfsk
     bsradio->rfconfig.modulation = modulation_2fsk;
     // bsradio->rfconfig.modulation = modulation_ook;
 
@@ -229,7 +215,7 @@ int radio_init(bsradio_instance_t *bsradio) {
   }
 
   bsradio->spim.frequency = 1000000;
-  bsradio->spim.bit_order = 0; // MSB
+  bsradio->spim.bit_order = 0;  // MSB
   bsradio->spim.mode = 0;
 
   bsradio->spim.hw_nr = 1;
@@ -240,127 +226,25 @@ int radio_init(bsradio_instance_t *bsradio) {
   bsradio->spim.rs_pin = bshal_gpio_encode_pin(GPIOB, GPIO_PIN_10);
 
   bshal_spim_init(&bsradio->spim);
-  switch (bsradio->hwconfig.chip_brand) {
-  case chip_brand_semtech:
-    switch (bsradio->hwconfig.chip_type) {
-    case 1:
-      puts("Semtech variant 1");
-      // Semtech variant 1
-      // Transceiver: SX1231, SX1231H, SX1233, RFM69,
-      // Receiver only MRF39RA: SX1239
-      // Potentially others. This variant can be recognised by the
-      // presence of register RegVersion at 0x10
-      // Tested on RFM69
+  if (bsradio->hwconfig.chip_brand == chip_brand_semtech &&
+      bsradio->hwconfig.chip_type == 1) {
+    bshal_gpio_write_pin(bsradio->spim.rs_pin, 1);
+    bshal_delay_ms(5);
+    bshal_gpio_write_pin(bsradio->spim.rs_pin, 0);
+    bshal_delay_ms(50);
 
-      // reset is active high!!!!
-      // TODO: Can we set reset polarity in our config
-      // and reset universally in stead of per chip?
-      bshal_gpio_write_pin(bsradio->spim.rs_pin, 1);
-      bshal_delay_ms(5);
-      bshal_gpio_write_pin(bsradio->spim.rs_pin, 0);
-      bshal_delay_ms(50);
-
-      bsradio->driver.set_frequency = sxv1_set_frequency;
-      bsradio->driver.set_tx_power = sxv1_set_tx_power;
-      bsradio->driver.set_bitrate = sxv1_set_bitrate;
-      bsradio->driver.set_fdev = sxv1_set_fdev;
-      bsradio->driver.set_bandwidth = sxv1_set_bandwidth;
-      bsradio->driver.init = sxv1_init;
-      bsradio->driver.set_network_id = sxv1_set_network_id;
-      bsradio->driver.set_mode = sxv1_set_mode;
-      bsradio->driver.recv_packet = sxv1_recv_packet;
-      bsradio->driver.send_packet = sxv1_send_packet;
-      break;
-    case 2:
-      // Semtech variant 2
-      // Transceiver OOK/FSK: : SX1232, SX1236
-      // Transceiver OOK/FSK/LoRa: SX127x, RFM9x
-      // Potentially others. This variant can be recognised by the
-      // presence of register RegVersion at 0x42
-      // Npt yet implemented. various modules in possession
-      // TODO
-      //					bsradio->driver.set_frequency =
-      //sxv2_set_frequency; 					bsradio->driver.set_tx_power = sxv2_set_tx_power;
-      //					bsradio->driver.set_bitrate =
-      //sxv2_set_bitrate; 					bsradio->driver.set_fdev = sxv2_set_fdev;
-      //					bsradio->driver.set_bandwidth =
-      //sxv2_set_bandwidth; 					bsradio->driver.init = sxv2_init;
-      //					bsradio->driver.set_network_id =
-      //sxv2_set_network_id; 					bsradio->driver.set_mode = sxv2_set_mode;
-      //					bsradio->driver.recv_packet =
-      //sxv2_recv_packet; 					bsradio->driver.send_packet = sxv2_send_packet;
-      break;
-    case 3:
-      // Semtech variant 3
-      // LLCC68, SX1261, SX1262, SX1268
-      // No modules in possession
-
-      //					bsradio->driver.set_frequency =
-      //sxv3_set_frequency; 					bsradio->driver.set_tx_power = sxv3_set_tx_power;
-      //					bsradio->driver.set_bitrate =
-      //sxv3_set_bitrate; 					bsradio->driver.set_fdev = sxv3_set_fdev;
-      //					bsradio->driver.set_bandwidth =
-      //sxv3_set_bandwidth; 					bsradio->driver.init = sxv3_init;
-      //					bsradio->driver.set_network_id =
-      //sxv3_set_network_id; 					bsradio->driver.set_mode = sxv3_set_mode;
-      //					bsradio->driver.recv_packet =
-      //sxv3_recv_packet; 					bsradio->driver.send_packet = sxv3_send_packet;
-    default:
-      return -1;
-      break;
-    }
-    break;
-  case chip_brand_silabs:
-    switch (bsradio->hwconfig.chip_type) {
-    case 1:
-      // SiLabs Si4x3x chips.
-      // These are well documented, unfortunately not recommended for new design
-      //					bsradio->driver.set_frequency =
-      //si4x3x_set_frequency; 					bsradio->driver.set_tx_power =
-      //si4x3x_set_tx_power; 					bsradio->driver.set_bitrate = si4x3x_set_bitrate;
-      //					bsradio->driver.set_fdev =
-      //si4x3x_set_fdev; 					bsradio->driver.set_bandwidth = si4x3x_set_bandwidth;
-      //					bsradio->driver.init =
-      //si4x3x_init; 					bsradio->driver.set_network_id = si4x3x_set_network_id;
-      //					bsradio->driver.set_mode =
-      //si4x3x_set_mode; 					bsradio->driver.recv_packet = si4x3x_recv_packet;
-      //					bsradio->driver.send_packet =
-      //si4x3x_send_packet;
-      break;
-    case 2:
-      // SiLabs Si4x6x chips.
-      // This is the newer generation of SiLabs Radio chips
-      // While there is extended documentation, many details are missing.
-      // The official development way is getting magic values generated
-      // by a tool that only runs on Microsoft Windows.
-      // This tool takes all the frequency, deviation, bandwidth, packet format
-      // all the settings and generates a header file to use.
-      // As this project wishes to create an API to configure the radio
-      // parameters, this is going to be a trickier one to support.
-      //
-      // TODO
-      //					bsradio->driver.set_frequency =
-      //si4x6x_set_frequency; 					bsradio->driver.set_tx_power =
-      //si4x6x_set_tx_power; 					bsradio->driver.set_bitrate = si4x6x_set_bitrate;
-      //					bsradio->driver.set_fdev =
-      //si4x6x_set_fdev; 					bsradio->driver.set_bandwidth = si4x6x_set_bandwidth;
-      //					bsradio->driver.init =
-      //si4x6x_init; 					bsradio->driver.set_network_id = si4x6x_set_network_id;
-      //					bsradio->driver.set_mode =
-      //si4x6x_set_mode; 					bsradio->driver.recv_packet = si4x6x_recv_packet;
-      //					bsradio->driver.send_packet =
-      //si4x6x_send_packet;
-      break;
-    default:
-      return -1;
-      break;
-    }
-    break;
-
-  default:
+    bsradio->driver.set_frequency = sxv1_set_frequency;
+    bsradio->driver.set_tx_power = sxv1_set_tx_power;
+    bsradio->driver.set_bitrate = sxv1_set_bitrate;
+    bsradio->driver.set_fdev = sxv1_set_fdev;
+    bsradio->driver.set_bandwidth = sxv1_set_bandwidth;
+    bsradio->driver.init = sxv1_init;
+    bsradio->driver.set_network_id = sxv1_set_network_id;
+    bsradio->driver.set_mode = sxv1_set_mode;
+    bsradio->driver.recv_packet = sxv1_recv_packet;
+    bsradio->driver.send_packet = sxv1_send_packet;
+  } else
     return -1;
-    break;
-  }
 
   /*
    * Europe: 433 MHz Band:
@@ -417,29 +301,29 @@ bscp_handler_status_t forward_handler(bscp_protocol_packet_t *packet,
 
   if (packet->head.sub == BSCP_SUB_QSET) {
     switch (forward->head.transport) {
-    case PROTOCOL_TRANSPORT_RF:
-      bsradio_packet_t request = {}, response = {};
-      request.from = 0x00;
-      request.to = forward->head.to;
-      request.length = packet->head.size - sizeof(packet->head);
+      case PROTOCOL_TRANSPORT_RF:
+        bsradio_packet_t request = {}, response = {};
+        request.from = 0x00;
+        request.to = forward->head.to;
+        request.length = packet->head.size - sizeof(packet->head);
 #pragma pack(push, 1)
-      memcpy(request.payload, forward->data,
-             packet->head.size - sizeof(packet->head));
-      int result = bsradio_send_request(&m_radio, &request, &response);
-      if (transport == PROTOCOL_TRANSPORT_USB) {
-        static bscp_protocol_packet_t usb_response;
-        usb_response.head = packet->head;
-        usb_response.head.res = result;
-        usb_response.head.sub = BSCP_SUB_SSTA;
-        bscp_usbd_transmit(gp_usbd, 0x81, &usb_response,
-                           usb_response.head.size);
-      }
+        memcpy(request.payload, forward->data,
+               packet->head.size - sizeof(packet->head));
+        int result = bsradio_send_request(&m_radio, &request, &response);
+        if (transport == PROTOCOL_TRANSPORT_USB) {
+          static bscp_protocol_packet_t usb_response;
+          usb_response.head = packet->head;
+          usb_response.head.res = result;
+          usb_response.head.sub = BSCP_SUB_SSTA;
+          bscp_usbd_transmit(gp_usbd, 0x81, &usb_response,
+                             usb_response.head.size);
+        }
 
 #pragma pack(pop)
 
-      return BSCP_HANDLER_STATUS_OK_FW;
-    default:
-      return BSCP_HANDLER_STATUS_BADDATA;
+        return BSCP_HANDLER_STATUS_OK_FW;
+      default:
+        return BSCP_HANDLER_STATUS_BADDATA;
     }
   }
   return BSCP_HANDLER_STATUS_ERROR;
@@ -452,40 +336,40 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
       (bsprot_sensor_enviromental_data_t *)packet->data;
   printf("Sensor %2d ", sensordata->id);
   switch (sensordata->type) {
-  case bsprot_sensor_enviromental_temperature:
-    printf("%16s %3d.%2d °C", "temperature",
-           sensordata->value.temperature_centi_celcius / 100,
-           abs(sensordata->value.temperature_centi_celcius) % 100);
-    break;
-  case bsprot_sensor_enviromental_humidity:
-    printf("%16s ", "humidity");
+    case bsprot_sensor_enviromental_temperature:
+      printf("%16s %3d.%2d °C", "temperature",
+             sensordata->value.temperature_centi_celcius / 100,
+             abs(sensordata->value.temperature_centi_celcius) % 100);
+      break;
+    case bsprot_sensor_enviromental_humidity:
+      printf("%16s ", "humidity");
 
-    break;
-  case bsprot_sensor_enviromental_illuminance:
-    printf("%16s ", "illuminance");
+      break;
+    case bsprot_sensor_enviromental_illuminance:
+      printf("%16s ", "illuminance");
 
-    break;
-  case bsprot_sensor_enviromental_airpressure:
-    printf("%16s ", "airpressure");
-    break;
+      break;
+    case bsprot_sensor_enviromental_airpressure:
+      printf("%16s ", "airpressure");
+      break;
 
-  case bsprot_sensor_enviromental_co2:
-    printf("%16s ", "co2");
+    case bsprot_sensor_enviromental_co2:
+      printf("%16s ", "co2");
 
-    break;
-  case bsprot_sensor_enviromental_eco2:
-    printf("%16s ", "eco2");
+      break;
+    case bsprot_sensor_enviromental_eco2:
+      printf("%16s ", "eco2");
 
-    break;
-  case bsprot_sensor_enviromental_etvoc:
-    printf("%16s ", "etvoc");
+      break;
+    case bsprot_sensor_enviromental_etvoc:
+      printf("%16s ", "etvoc");
 
-    break;
-  case bsprot_sensor_enviromental_pm25:
+      break;
+    case bsprot_sensor_enviromental_pm25:
 
-    break;
-  default:
-    break;
+      break;
+    default:
+      break;
   }
   putchar('\n');
 
@@ -493,7 +377,6 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 }
 
 int main() {
-
   // New GCC versions are nit-picking.
   // Put them here for now, make it neat later.
   extern void ClockSetup_HSE8_SYS72(void);
@@ -516,7 +399,6 @@ int main() {
 
   protocol_register_command(forward_handler, BSCP_CMD_FORWARD);
   while (1) {
-
     usbd_process();
 
     bsradio_packet_t request = {}, response = {};
