@@ -62,7 +62,7 @@ void display_process(void) {
 	char buff[16];
 	//	static time_t prev_time = 0;
 	static int state = 1;
-	static bool light_status = false;
+	bool light_status = light_switch_get();
 	static bool display_status = true;
 	static int addrentry[3];
 
