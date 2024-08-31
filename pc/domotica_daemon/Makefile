@@ -10,6 +10,7 @@ CXX_SRC 	 += Device.cpp
 CXX_SRC 	 += DeviceManager.cpp
 CXX_SRC 	 += threadname.cpp
 CXX_SRC 	 += mqtt.cpp
+CXX_SRC 	 += sensordata.cpp
 
 CXX_INCLUDES += $(UCDEV_ROOT)/lib/bsprot
 

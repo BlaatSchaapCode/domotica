@@ -36,6 +36,8 @@ public:
 
 	int publish_switch(int node_id, int switch_id);
 
+	int publish_switch_value(int node_id, bool value) ;
+
 private:
 	std::string m_id;
 	std::string m_host;

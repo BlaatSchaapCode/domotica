@@ -75,6 +75,8 @@ Device::Device(libusb_device_handle *handle) {
 			m_usb_descriptor_device.iSerialNumber, m_usb_string_serial,
 			sizeof(m_usb_string_serial));
 
+	sscanf((const char*)m_usb_string_serial, "%08X" , &m_serial);
+
 	retval = libusb_claim_interface(m_usb_handle, 0);
 
 	if (retval) {
@@ -289,7 +291,7 @@ void Device::process_recv_queue_code(Device *dev) {
 	}
 }
 
-int Device::testForwardTime(int node_id) {
+int Device::setTime(int node_id) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
@@ -320,7 +322,7 @@ int Device::testForwardTime(int node_id) {
 	return -1;
 }
 
-int Device::testForwardGetData(int node_id) {
+int Device::getData(int node_id) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
@@ -352,7 +354,7 @@ int Device::testForwardGetData(int node_id) {
 }
 
 //--
-int Device::testForwardGetInfo(int node_id) {
+int Device::getInfo(int node_id) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
@@ -384,7 +386,7 @@ int Device::testForwardGetInfo(int node_id) {
 }
 //--
 
-int Device::testForwardOnOff(int node_id, bool onoff) {
+int Device::setSwitch(int node_id, bool onoff) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;

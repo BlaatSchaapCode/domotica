@@ -61,7 +61,7 @@ public:
 
 	void start();
 
-	Device* getDevice(std::string id) {
+	Device* getDevice(uint32_t id) {
 		return mapSerial2Device[id];
 	}
 private:
@@ -88,7 +88,7 @@ private:
 	bool libusb_handle_events_thread_running = true;
 	static void libusb_handle_events_thread_code(DeviceManager *dm);
 
-	std::map<std::string, Device*> mapSerial2Device = { };
+	std::map<uint32_t, Device*> mapSerial2Device = { };
 	std::map<libusb_device*, Device*> mapUsb2Device = { };
 };
 

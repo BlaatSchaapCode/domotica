@@ -9,12 +9,17 @@
 #include "mqtt.hpp"
 
 static DeviceManager m_dm;
+DeviceManager *p_dm;
 static mqqt_test *mp_mqtt;
+
+#include "sensordata.hpp"
 
 extern "C" {
 #include "protocol.h"
 #include "sensor_protocol.h"
 #include "switch_protocol.h"
+
+
 
 bscp_handler_status_t forward_handler(bscp_protocol_packet_t *data,
 		protocol_transport_t transport, uint32_t param) {
@@ -30,6 +35,21 @@ bscp_handler_status_t forward_handler(bscp_protocol_packet_t *data,
 			- sizeof (protocol_transport_header_t)
 			, transport,
 			forwarded_data->head.as_uint32);
+	return BSCP_HANDLER_STATUS_OK;
+}
+
+
+bscp_handler_status_t switch_handler(bscp_protocol_packet_t *packet,
+		protocol_transport_t transport, uint32_t param) {
+
+	puts("Switch Handler");
+
+	protocol_transport_header_t h = { .as_uint32 = param };
+	int node_id = h.from;
+	uint8_t state = (packet->data[0]);
+	printf("Unit %d state %d\n", node_id, state);
+	mp_mqtt->publish_switch_value(node_id,state);
+	// homeassistant/switch/unit_10/value
 	return BSCP_HANDLER_STATUS_OK;
 }
 
@@ -173,6 +193,7 @@ int main(int argc, char *argv[]) {
 
 	protocol_register_command(forward_handler, BSCP_CMD_FORWARD);
 	protocol_register_command(sensordata_handler, BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE);
+	protocol_register_command(switch_handler, BSCP_CMD_SWITCH);
 
 
 	mosqpp::lib_init();
@@ -186,46 +207,38 @@ int main(int argc, char *argv[]) {
 //	mp_mqtt->connect_async("localhost", 1883);
 
 	m_dm.start();
+	p_dm = &m_dm;
 	Device * d = nullptr;
 
-	bool time_synced = false;
-	while (1) {
-
-		std::this_thread::sleep_for(std::chrono::seconds(5));
-		d = m_dm.getDevice("D32A6E04");
-		if (d) {
-//			puts("Getting info for 0x10");
-//			 d->testForwardGetInfo(0x10);
-			d->testForwardOnOff(0x10, false);
-			puts("Off");
-
-		}
-
-		std::this_thread::sleep_for(std::chrono::seconds(5));
-		d = m_dm.getDevice("D32A6E04");
-		if (d) {
-
-//			puts("Getting data for 0x10");
-//			 d->testForwardGetData(0x10);
-			d->testForwardOnOff(0x10, true);
-			puts("On");
-		}
-
-
-
-//		if (!time_synced) {
-//			d = m_dm.getDevice("LK9L0MF9");
-//			std::this_thread::sleep_for(std::chrono::seconds(1));
-//			if (d) {
-//				puts("Setting time");
-//				 d->testForwardTime(0x10);
-//				 time_synced = true;
-//				 break;
-//			}
+//	bool time_synced = false;
+//	while (1) {
+//
+//		std::this_thread::sleep_for(std::chrono::seconds(5));
+//		d = m_dm.getDevice(0xD32A6E04);
+//		if (d) {
+////			puts("Getting info for 0x10");
+////			 d->testForwardGetInfo(0x10);
+//			d->setSwitch(0x10, false);
+//			puts("Off");
+//
 //		}
+//
+//		std::this_thread::sleep_for(std::chrono::seconds(5));
+//		d = m_dm.getDevice(0xD32A6E04);
+//		if (d) {
+//
+////			puts("Getting data for 0x10");
+////			 d->testForwardGetData(0x10);
+//			d->setSwitch(0x10, true);
+//			puts("On");
+//		}
+//
+//
+//	}
 
+	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x10, 60).detach();
 
-	}
+	while (1) sleep(1);
 
 	mosqpp::lib_cleanup();
 }

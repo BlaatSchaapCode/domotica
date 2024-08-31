@@ -13,6 +13,9 @@
 #include <mosquittopp.h>
 #include <nlohmann/json.hpp>
 
+#include "DeviceManager.hpp"
+extern DeviceManager *p_dm;
+
 //int mqqt_test::connect_to_server(const char *id, const char *host, int port) {
 //
 //	int keepalive = 60;
@@ -54,8 +57,17 @@ void mqqt_test::on_message(const struct mosquitto_message *message) {
 		printf("Topic : %s \n" , message->topic);
 		printf("Payload : %s \n" , payload);
 
+		int node_id, switch_id;
+		if (2 == sscanf(message->topic, "homeassistant/switch/unit_%02X/set/%02X", &node_id, &switch_id)) {
+			int state;
+			sscanf(payload, "%d", &state);
+			// TODO, SensorManager to derive dongle id
+			auto d = p_dm->getDevice(0xD32A6E04);
+			if (d) {
+				d->setSwitch(node_id, state);
+			}
+		}
 	}
-
 }
 
 void mqqt_test::on_subscribe(int mid, int qos_count, const int *granted_qos) {
@@ -137,6 +149,19 @@ int mqqt_test::publish_sensorvalue(int node_id, int sens_id,
 	}
 
 	return result;
+}
+
+int mqqt_test::publish_switch_value(int node_id, bool value) {
+	char state_topic[256];
+	snprintf(state_topic, sizeof(state_topic),
+			"homeassistant/switch/unit_%02x/value", node_id);
+
+	int mid;
+	char val[] = {'0' + value};
+	int result = publish(&mid, state_topic, 1,
+			val);
+	return result;
+
 }
 
 int mqqt_test::publish_switch(int node_id, int switch_id) {

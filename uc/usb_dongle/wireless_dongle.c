@@ -291,6 +291,16 @@ int radio_init(bsradio_instance_t *bsradio) {
   bsradio->rfconfig.network_id_size = 4;
   bsradio->rfconfig.node_id = 0;
 
+  puts("Radio config");
+  printf("Bandwidth:      %6d Hz\n", bsradio->rfconfig.bandwidth_hz);
+  printf("Bitrate:        %6d bps\n", bsradio->rfconfig.birrate_bps);
+  printf("Freq. dev.      %6d Hz \n", bsradio->rfconfig.freq_dev_hz);
+  printf("Frequency       %6d kHz\n", bsradio->rfconfig.frequency_kHz);
+  printf("Netword id:     %08lX\n", *(uint32_t*)(bsradio->rfconfig.network_id));
+
+
+
+
   return bsradio_init(bsradio);
 }
 

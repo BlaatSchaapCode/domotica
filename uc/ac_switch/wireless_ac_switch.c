@@ -194,7 +194,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 	} else {
 		puts("rfconfig missing");
 
-		switch (bsradio->hwconfig.frequency_band == 868) {
+		switch (bsradio->hwconfig.frequency_band) {
 		case 434:
 			bsradio->rfconfig.frequency_kHz = 434000;
 			bsradio->rfconfig.tx_power_dBm = 10;
@@ -312,6 +312,13 @@ int radio_init(bsradio_instance_t *bsradio) {
 
 	// Temp hack;
 	(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD32A6E04;
+
+	  puts("Radio config");
+	  printf("Bandwidth:      %6d Hz\n", bsradio->rfconfig.bandwidth_hz);
+	  printf("Bitrate:        %6d bps\n", bsradio->rfconfig.birrate_bps);
+	  printf("Freq. dev.      %6d Hz \n", bsradio->rfconfig.freq_dev_hz);
+	  printf("Frequency       %6d kHz\n", bsradio->rfconfig.frequency_kHz);
+	  printf("Netword id:     %08lX\n", *(uint32_t*)(bsradio->rfconfig.network_id));
 
 	return bsradio_init(bsradio);
 }
