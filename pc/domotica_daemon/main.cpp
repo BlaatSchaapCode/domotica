@@ -66,6 +66,9 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 	protocol_transport_header_t h = { .as_uint32 = param };
 	int unit_id = h.from;
 	int sens_id = sensordata->id;
+
+	printf("Sensordat for unit %d sensor %d\n", unit_id, sens_id);
+
 	float value_float;
 	(void)value_float;
 	char value[16];
@@ -236,7 +239,9 @@ int main(int argc, char *argv[]) {
 //
 //	}
 
-	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x10, 60).detach();
+	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x01, 60).detach();
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x03, 60).detach();
 
 	while (1) sleep(1);
 

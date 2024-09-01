@@ -137,9 +137,9 @@ int radio_init(bsradio_instance_t *bsradio) {
 
 	// spi_flash_read(&spi_flash_config, 0x000, hwconfig_buffer,
 	// sizeof(hwconfig_buffer));
-	i2c_eeprom_read(&i2c_eeprom_config, 0x00, hwconfig_buffer,
+	int result = i2c_eeprom_read(&i2c_eeprom_config, 0x00, hwconfig_buffer,
 			sizeof(hwconfig_buffer));
-
+	(void)result;
 	if (header->size
 			== sizeof(bscp_protocol_header_t) + sizeof(bsradio_hwconfig_t)) {
 		bsradio->hwconfig = *hwconfig;
@@ -156,7 +156,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 		hwconfig->chip_brand = chip_brand_semtech;
 		hwconfig->chip_type = 1;
 		hwconfig->chip_variant = -1;
-		hwconfig->module_brand = module_brand_hoperf;
+		hwconfig->module_brand = module_brand_dreamlnk;
 		hwconfig->module_variant = -1;
 		hwconfig->frequency_band = 868;
 		hwconfig->tune = 0;
@@ -184,9 +184,8 @@ int radio_init(bsradio_instance_t *bsradio) {
 			+ sizeof(bscp_protocol_header_t));
 	i2c_eeprom_read(&i2c_eeprom_config, 0x14, rfconfig_buffer, 0x23);
 
-	// temp disbale
-	if (false
-			&& header->size
+
+	if (header->size
 					== sizeof(bscp_protocol_header_t)
 							+ sizeof(bsradio_rfconfig_t)) {
 		bsradio->rfconfig = *rfconfig;
@@ -226,10 +225,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 		//		bsradio->rfconfig.freq_dev_hz = 50000;
 		//		bsradio->rfconfig.bandwidth_hz = 100000;
 
-		bsradio->rfconfig.network_id[0] = 0xDE;
-		bsradio->rfconfig.network_id[1] = 0xAD;
-		bsradio->rfconfig.network_id[2] = 0xBE;
-		bsradio->rfconfig.network_id[3] = 0xEF;
+		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD32A6E04;
 		bsradio->rfconfig.network_id_size = 4;
 
 		bsradio->rfconfig.node_id = 0x10;
@@ -310,15 +306,15 @@ int radio_init(bsradio_instance_t *bsradio) {
 	 * In other words, what am I allowed to set?
 	 */
 
-	// Temp hack;
-	(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD32A6E04;
+
 
 	  puts("Radio config");
 	  printf("Bandwidth:      %6d Hz\n", bsradio->rfconfig.bandwidth_hz);
 	  printf("Bitrate:        %6d bps\n", bsradio->rfconfig.birrate_bps);
 	  printf("Freq. dev.      %6d Hz \n", bsradio->rfconfig.freq_dev_hz);
 	  printf("Frequency       %6d kHz\n", bsradio->rfconfig.frequency_kHz);
-	  printf("Netword id:     %08lX\n", *(uint32_t*)(bsradio->rfconfig.network_id));
+	  printf("Network id:     %08lX\n", *(uint32_t*)(bsradio->rfconfig.network_id));
+	  printf("Node id:        %d\n", bsradio->rfconfig.node_id);
 
 	return bsradio_init(bsradio);
 }
@@ -456,10 +452,8 @@ int main() {
 	SEGGER_RTT_Init();
 	gpio_init();
 
-	puts("Wireless AC Switch");
+	puts("BlaatSchaap Domotica: AC Switch");
 
-	printf("Sizeof bsradio_hwconfig_t is %d\n", sizeof(bsradio_hwconfig_t));
-	printf("Sizeof bsradio_rfconfig_t is %d\n", sizeof(bsradio_rfconfig_t));
 	timer_init();
 	rtc_init();
 	ir_init();
@@ -487,14 +481,18 @@ int main() {
 
 		bool calibration = false;
 		if (calibration) {
-			sxv1_set_mode_internal(&m_radio, sxv1_mode_standby);
 
-			// Calibration to fund the tune value, for SXv1 (RFM69)
-			// this is the frequency offset in kHz
 			m_radio.hwconfig.tune = 0;
-
-			sxv1_set_frequency(&m_radio, 870000);
 			while (1) {
+
+				sxv1_set_mode_internal(&m_radio, sxv1_mode_standby);
+
+				// Calibration to fund the tune value, for SXv1 (RFM69)
+				// this is the frequency offset in kHz
+				(void)m_radio.hwconfig.tune;
+
+				sxv1_set_frequency(&m_radio, 870000);
+
 				response.ack_request = 0;
 				response.ack_response = 1;
 				response.to = request.from;
