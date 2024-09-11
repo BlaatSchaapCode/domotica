@@ -456,10 +456,45 @@ void buttons_process(void) {
 	btn2 = button2_get();
 }
 
+void calibrate_clock() {
+	display_clear();
+	display_print_upper("Calibrating");
+	display_print_middle("  Clock");
+	display_apply();
+
+	time_t t = time(NULL);
+	while(t==time(NULL));
+	t = time(NULL);
+	uint32_t a = get_time_ms();
+	while(t==time(NULL));
+	uint32_t b = get_time_ms();
+	uint32_t c = b - a;
+	printf("clock speed deviation: %d\n",c);
+}
+
+
 int main() {
+	SEGGER_RTT_Init();
+
+
+	puts(  "BlaatSchaap Domotica: AC Switch");
+	printf("Serial: %s\n", get_serial_string());
+
+
 	extern void ClockSetup_HSI_SYS48(void); // TODO
-	ClockSetup_HSI_SYS48();
+	extern void ClockSetup_HSE8_SYS48(void);
+	extern void ClockSetup_HSI_SYS8(void);
+	extern void ClockSetup_HSI_SYS36(void);
+//	ClockSetup_HSI_SYS48();
+//	ClockSetup_HSE8_SYS48();
+//	ClockSetup_HSI_SYS8();
+	ClockSetup_HSI_SYS36();
+
 	HAL_Init(); // gah
+
+
+	rtc_init();
+	timer_init();
 
 	// Time zone on the microcontroller
 	// https://newlib.sourceware.narkive.com/fvlGlRPa/how-to-set-timezone-for-localtime
@@ -468,19 +503,18 @@ int main() {
 	tzset();
 
 	bshal_delay_init();
-	SEGGER_RTT_Init();
+
 	gpio_init();
 
-	puts(  "BlaatSchaap Domotica: AC Switch");
-	printf("Serial: %s\n", get_serial_string());
-
-
-	timer_init();
-	rtc_init();
 	ir_init();
 	i2c_init();
-	sensors_init();
+
 	display_init();
+//	calibrate_clock();
+	timer_init();
+
+	sensors_init();
+
 	radio_init(&m_radio);
 	gp_radio = &m_radio;
 	bsradio_set_mode(&m_radio, mode_receive);

@@ -12,4 +12,11 @@ void display_set_key(char key);
 void display_init(void);
 void display_process(void);
 
+
+void display_clear();
+void display_print_upper(char*);
+void display_print_middle(char*);
+void display_print_lower(char*);
+void display_apply();
+
 #endif /* DISPLAY_H_ */

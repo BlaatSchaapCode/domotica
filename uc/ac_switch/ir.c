@@ -89,7 +89,7 @@ void ir_handler(bool pinstate) {
   if (!pinstate) {
     m_ir_data.hi_us = get_time_us();
     uint32_t hi_time = m_ir_data.hi_us - m_ir_data.lo_us;
-    // printf("HI %6d\n", hi_time);
+     printf("HI %6d\n", hi_time);
 
     switch (ir_state) {
     // TODO margins
@@ -131,7 +131,7 @@ void ir_handler(bool pinstate) {
   } else {
     m_ir_data.lo_us = get_time_us();
     uint32_t lo_time = m_ir_data.lo_us - m_ir_data.hi_us;
-    // printf("LO %6d\n", lo_time);
+     printf("LO %6d\n", lo_time);
 
     switch (ir_state) {
     case ir_idle: {

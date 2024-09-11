@@ -55,7 +55,9 @@ int ds18x20_read_bit(uint8_t pin, bool *val) {
 	bshal_gpio_write_pin(pin, true);
 //	bshal_delay_us(15);
 	// Seems our delay function is a little off
-	bshal_delay_us(5);
+//	bshal_delay_us(5);  // does not work correctly on gd32f101cb
+	bshal_delay_us(3);
+
 	*val = 1;
 	int timeout = get_time_us() + 60;
 	while (get_time_us() < timeout) {
