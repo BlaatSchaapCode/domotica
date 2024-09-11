@@ -67,6 +67,9 @@
 #include "rtc.h"
 #include "sensors.h"
 #include "timer.h"
+#include "serial.h"
+#include "sxv1.h"
+
 #include <SEGGER_RTT.h>
 
 static bshal_i2cm_instance_t m_i2c;
@@ -316,7 +319,23 @@ int radio_init(bsradio_instance_t *bsradio) {
 	  printf("Network id:     %08lX\n", *(uint32_t*)(bsradio->rfconfig.network_id));
 	  printf("Node id:        %d\n", bsradio->rfconfig.node_id);
 
-	return bsradio_init(bsradio);
+	bsradio_init(bsradio);
+
+	char chip_version;
+	sxv1_read_reg(bsradio, SXV1_REG_VERSION, &chip_version);
+
+	switch (chip_version) {
+	case 0x23:
+		puts("SX123x : OK");
+		break;
+	case 0x24:
+		puts("SX1231H: OK");
+		break;
+	default:
+		puts("SX123x : FAIL");
+		break;
+	}
+
 }
 
 void SysTick_Handler(void) {
@@ -452,7 +471,9 @@ int main() {
 	SEGGER_RTT_Init();
 	gpio_init();
 
-	puts("BlaatSchaap Domotica: AC Switch");
+	puts(  "BlaatSchaap Domotica: AC Switch");
+	printf("Serial: %s\n", get_serial_string());
+
 
 	timer_init();
 	rtc_init();

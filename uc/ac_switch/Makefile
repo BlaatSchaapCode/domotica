@@ -26,6 +26,8 @@ C_SOURCES += ir_stm32.c
 C_SOURCES += ir.c
 C_SOURCES += display.c
 C_SOURCES += rtc.c
+C_SOURCES += serial.c
+C_SOURCES += ds18b20.c
 
 C_SOURCES += $(LIBHALGLUE_ROOT)/common/arm_cpuid.c
 C_SOURCES += $(LIBHALGLUE_ROOT)/common/nosysfix.c

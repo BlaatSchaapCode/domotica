@@ -84,7 +84,6 @@ void display_process(void) {
 	}
 		break;
 
-
 	case 'K': {
 		u8g2_SetPowerSave(&m_u8g2, false);
 		if (state == 0x01) {
@@ -113,15 +112,24 @@ void display_process(void) {
 
 		extern uint16_t bh1750_illuminance_lux;
 		extern int16_t lm75b_temperature_centi_celcius;
+		extern int16_t ds18b20_temperature_centi_celcius;
 
 		sprintf(buff, "%5d lx", bh1750_illuminance_lux);
 		display_print_middle(buff);
-		sprintf(buff, "%3d.%u °C", lm75b_temperature_centi_celcius / 100,
-				(abs(lm75b_temperature_centi_celcius) % 100) / 10);
-		display_print_lower(buff);
+
+		if (ds18b20_temperature_centi_celcius) {
+			sprintf(buff, "%3d.%u °C", ds18b20_temperature_centi_celcius / 100,
+					(abs(ds18b20_temperature_centi_celcius) % 100) / 10);
+			display_print_lower(buff);
+		} else {
+			sprintf(buff, "%3d.%u °C", lm75b_temperature_centi_celcius / 100,
+					(abs(lm75b_temperature_centi_celcius) % 100) / 10);
+			display_print_lower(buff);
+		}
+
 		break;
 	case 0x10:
-		display_print_upper ("  pair");
+		display_print_upper("  pair");
 		display_print_middle("  mode");
 		break;
 	default:
