@@ -52,6 +52,12 @@ extern "C" {
 // Project includes
 #include "threadname.hpp"
 
+
+
+#include "SensorManager.hpp"
+extern SensorManager g_sm;
+
+
 Device::Device(libusb_device_handle *handle) {
 	this->m_usb_device = libusb_get_device(handle);
 	this->m_usb_handle = handle;
@@ -91,6 +97,8 @@ Device::Device(libusb_device_handle *handle) {
 	libusb_fill_bulk_transfer(m_transfer_in, handle, 0x81, m_recv_buffer,
 			sizeof(m_recv_buffer), Device::libusb_transfer_cb, this, 50000);
 	retval = libusb_submit_transfer(m_transfer_in);
+
+	g_sm.dongleArrived(m_serial);
 }
 
 Device::~Device() {
@@ -130,6 +138,8 @@ Device::~Device() {
 		libusb_free_transfer(m_transfer_in);
 		m_transfer_in = nullptr;
 	}
+
+	g_sm.dongleLeft(m_serial);
 }
 
 void Device::libusb_transfer_cb(struct libusb_transfer *xfr) {
@@ -157,14 +167,16 @@ void Device::libusb_transfer_cb(struct libusb_transfer *xfr) {
 		if (xfr->endpoint & 0x80) {
 			std::vector<uint8_t> recvData;
 
-			//recvData.resize(1 + xfr->actual_length);
-			recvData.resize(2 + xfr->actual_length, 0);
-			memcpy(1 + recvData.data(), xfr->buffer, xfr->actual_length);
-			recvData[0] = xfr->endpoint;
-			std::unique_lock<std::mutex> lk(_this->m_recv_queue_mutex);
-			_this->m_recv_queue.push_back(recvData);
-			_this->m_recv_queue_cv.notify_all();
-
+			if (xfr->actual_length) {
+				//recvData.resize(1 + xfr->actual_length);
+				recvData.resize(4 + xfr->actual_length, 0);
+				memcpy(4 + recvData.data(), xfr->buffer, xfr->actual_length);
+				//recvData[0] = xfr->endpoint;
+				(*(uint32_t*)&recvData[0]) = _this->m_serial;
+				std::unique_lock<std::mutex> lk(_this->m_recv_queue_mutex);
+				_this->m_recv_queue.push_back(recvData);
+				_this->m_recv_queue_cv.notify_all();
+			}
 			int r;
 
 			std::unique_lock<std::mutex> transfer_lock(_this->m_transfer_mutex);
@@ -280,11 +292,12 @@ void Device::process_recv_queue_code(Device *dev) {
 
 			std::vector<uint8_t> data = dev->m_recv_queue.front();
 
-			size_t size = data.size() - 1;
-			uint8_t *buffer = data.data() + 1;
+			size_t size = data.size() - 4;
+			uint8_t *buffer = data.data() + 4;
+			uint32_t dongle_id = *(uint32_t*)(data.data());
 			(void) size;
 
-			protocol_parse(buffer, size, PROTOCOL_TRANSPORT_USB, data[0]);
+			protocol_parse(buffer, size, PROTOCOL_TRANSPORT_USB, &dongle_id);
 
 			dev->m_recv_queue.pop_front();
 		}

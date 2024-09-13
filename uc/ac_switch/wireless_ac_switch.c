@@ -344,8 +344,9 @@ void SysTick_Handler(void) {
 }
 
 bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
-		protocol_transport_t transport, uint32_t param) {
-	protocol_transport_header_t flags = { .as_uint32 = param };
+		protocol_transport_t transport, void* param) {
+
+
 	if (packet->head.sub = BSCP_SUB_QGET)
 		sensors_send();
 	return 0;
@@ -392,8 +393,8 @@ void deviceinfo_send(void) {
 }
 
 bscp_handler_status_t info_handler(bscp_protocol_packet_t *packet,
-		protocol_transport_t transport, uint32_t param) {
-	protocol_transport_header_t flags = { .as_uint32 = param };
+		protocol_transport_t transport, void* param) {
+
 	if (packet->head.sub = BSCP_SUB_QGET)
 		deviceinfo_send();
 	return 0;
@@ -408,7 +409,7 @@ void gpio_init() {
 }
 
 bscp_handler_status_t unixtime_handler(bscp_protocol_packet_t *packet,
-		protocol_transport_t transport, uint32_t param) {
+		protocol_transport_t transport, void* param) {
 
 	time_t unixtime = *(uint32_t*) packet->data;
 	switch (packet->head.sub) {
@@ -425,7 +426,7 @@ bscp_handler_status_t unixtime_handler(bscp_protocol_packet_t *packet,
 }
 
 bscp_handler_status_t switch_onoff_handler(bscp_protocol_packet_t *packet,
-		protocol_transport_t transport, uint32_t param) {
+		protocol_transport_t transport, void* param) {
 	switch (packet->head.sub) {
 	case BSCP_SUB_QGET:
 		// TODO
@@ -590,7 +591,7 @@ int main() {
 							.to = request.to, .rssi = request.rssi, .transport =
 									PROTOCOL_TRANSPORT_RF };
 					protocol_parse(request.payload, request.length,
-							PROTOCOL_TRANSPORT_RF, flags.as_uint32);
+							PROTOCOL_TRANSPORT_RF, &flags);
 				}
 			} else {
 				puts("Packet is not for us");

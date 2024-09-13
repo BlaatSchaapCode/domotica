@@ -1,5 +1,6 @@
 #include "Device.hpp"
 #include "DeviceManager.hpp"
+#include "SensorManager.hpp"
 
 #include <chrono>
 #include <thread>
@@ -14,47 +15,57 @@ static mqqt_test *mp_mqtt;
 
 #include "sensordata.hpp"
 
+SensorManager g_sm;
+
+
 extern "C" {
 #include "protocol.h"
 #include "sensor_protocol.h"
 #include "switch_protocol.h"
-
+typedef struct{
+	protocol_transport_header_t transport;
+	uint32_t dongle_id;
+} forward_data_t;
 
 
 bscp_handler_status_t forward_handler(bscp_protocol_packet_t *data,
-		protocol_transport_t transport, uint32_t param) {
+		protocol_transport_t transport, void* param) {
 
 	bscp_protocol_forward_t *forwarded_data =
 			(bscp_protocol_forward_t*) (data->data);
 
-//	protocol_transport_header_t flags = { .transport =
-//			forwarded_data->head.transport, .from = forwarded_data->head.from,
-//			.to = forwarded_data->head.to, .rssi = forwarded_data->head.rssi, };
+	forward_data_t forward_data;
+	forward_data.transport = *(protocol_transport_header_t*)(data->data);
+	forward_data.dongle_id = *(uint32_t*)param;
+
 
 	protocol_parse(forwarded_data->data, data->head.size
 			- sizeof (protocol_transport_header_t)
 			, transport,
-			forwarded_data->head.as_uint32);
+			&forward_data);
 	return BSCP_HANDLER_STATUS_OK;
 }
 
 
 bscp_handler_status_t switch_handler(bscp_protocol_packet_t *packet,
-		protocol_transport_t transport, uint32_t param) {
+		protocol_transport_t transport, void* param) {
 
 	puts("Switch Handler");
 
-	protocol_transport_header_t h = { .as_uint32 = param };
-	int node_id = h.from;
+	forward_data_t forward_data  = *(forward_data_t*)(param);
+
 	uint8_t state = (packet->data[0]);
-	printf("Unit %d state %d\n", node_id, state);
-	mp_mqtt->publish_switch_value(node_id,state);
+	printf("Dongle %08X Unit %d State %d\n", forward_data.dongle_id, forward_data.transport.from, state);
+	mp_mqtt->publish_switch_value(forward_data.transport.from,state);
 	// homeassistant/switch/unit_10/value
 	return BSCP_HANDLER_STATUS_OK;
 }
 
 bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
-		protocol_transport_t transport, uint32_t param) {
+		protocol_transport_t transport, void * param) {
+
+	forward_data_t forward_data  = *(forward_data_t*)(param);
+
 	bsprot_sensor_enviromental_data_t *sensordata =
 			(bsprot_sensor_enviromental_data_t*) packet->data;
 
@@ -63,11 +74,10 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 	const char *device_class = nullptr;
 	const char *unit_of_measurement = nullptr;
 
-	protocol_transport_header_t h = { .as_uint32 = param };
-	int unit_id = h.from;
+	int unit_id = forward_data.transport.from;
 	int sens_id = sensordata->id;
 
-	printf("Sensordat for unit %d sensor %d\n", unit_id, sens_id);
+	printf("Sensordata dongle %08X for unit %d sensor %d\n", forward_data.dongle_id, unit_id, sens_id);
 
 	float value_float;
 	(void)value_float;
@@ -145,10 +155,11 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 }
 
 bscp_handler_status_t info_handler(bscp_protocol_packet_t *data,
-		protocol_transport_t transport, uint32_t param) {
+		protocol_transport_t transport, void *  param) {
 	puts("Received info");
+	forward_data_t forward_data  = *(forward_data_t*)(param);
+
 	bscp_protocol_info_t * info = (bscp_protocol_info_t *)data->data;
-	protocol_transport_header_t header = {.as_uint32 = param };
 
 	int count = (data->head.size - sizeof (data->head) ) / sizeof (bscp_protocol_info_t);
 	for (int i = 0 ; i < count ; i++) {
@@ -175,10 +186,10 @@ bscp_handler_status_t info_handler(bscp_protocol_packet_t *data,
 			default:
 				continue;
 			}
-			mp_mqtt->publish_sensor(header.from, info[i].index, device_class, unit_of_measurement);
+			mp_mqtt->publish_sensor(forward_data.transport.from, info[i].index, device_class, unit_of_measurement);
 			break;
 		case BSCP_CMD_SWITCH:
-			mp_mqtt->publish_switch(header.from, info[i].index);
+			mp_mqtt->publish_switch(forward_data.transport.from, info[i].index);
 			break;
 		default:
 			break;
@@ -192,9 +203,10 @@ bscp_handler_status_t info_handler(bscp_protocol_packet_t *data,
 }
 
 int main(int argc, char *argv[]) {
-	protocol_register_command(info_handler, BSCP_CMD_INFO);
+
 
 	protocol_register_command(forward_handler, BSCP_CMD_FORWARD);
+	protocol_register_command(info_handler, BSCP_CMD_INFO);
 	protocol_register_command(sensordata_handler, BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE);
 	protocol_register_command(switch_handler, BSCP_CMD_SWITCH);
 
@@ -239,9 +251,9 @@ int main(int argc, char *argv[]) {
 //
 //	}
 
-	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x01, 60).detach();
-	std::this_thread::sleep_for(std::chrono::seconds(1));
-	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x03, 60).detach();
+//	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x01, 60).detach();
+//	std::this_thread::sleep_for(std::chrono::seconds(1));
+//	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x03, 60).detach();
 
 	while (1) sleep(1);
 

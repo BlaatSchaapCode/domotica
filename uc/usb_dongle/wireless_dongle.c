@@ -306,7 +306,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 
 bscp_handler_status_t forward_handler(bscp_protocol_packet_t *packet,
                                       protocol_transport_t transport,
-                                      uint32_t param) {
+                                      void* param) {
   bscp_protocol_forward_t *forward = (bscp_protocol_forward_t *)(packet->data);
 
   if (packet->head.sub == BSCP_SUB_QSET) {
@@ -341,7 +341,7 @@ bscp_handler_status_t forward_handler(bscp_protocol_packet_t *packet,
 
 bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
                                          protocol_transport_t transport,
-                                         uint32_t param) {
+                                         void* param) {
   bsprot_sensor_enviromental_data_t *sensordata =
       (bsprot_sensor_enviromental_data_t *)packet->data;
   printf("Sensor %2d ", sensordata->id);
