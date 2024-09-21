@@ -70,6 +70,8 @@
 #include "serial.h"
 #include "sxv1.h"
 
+#include "pair.h"
+
 #include <SEGGER_RTT.h>
 
 static bshal_i2cm_instance_t m_i2c;
@@ -138,11 +140,9 @@ int radio_init(bsradio_instance_t *bsradio) {
 	bsradio_hwconfig_t *hwconfig = (bsradio_hwconfig_t*) (hwconfig_buffer
 			+ sizeof(bscp_protocol_header_t));
 
-	// spi_flash_read(&spi_flash_config, 0x000, hwconfig_buffer,
-	// sizeof(hwconfig_buffer));
 	int result = i2c_eeprom_read(&i2c_eeprom_config, 0x00, hwconfig_buffer,
 			sizeof(hwconfig_buffer));
-	(void)result;
+	(void) result;
 	if (header->size
 			== sizeof(bscp_protocol_header_t) + sizeof(bsradio_hwconfig_t)) {
 		bsradio->hwconfig = *hwconfig;
@@ -187,10 +187,8 @@ int radio_init(bsradio_instance_t *bsradio) {
 			+ sizeof(bscp_protocol_header_t));
 	i2c_eeprom_read(&i2c_eeprom_config, 0x14, rfconfig_buffer, 0x23);
 
-
 	if (header->size
-					== sizeof(bscp_protocol_header_t)
-							+ sizeof(bsradio_rfconfig_t)) {
+			== sizeof(bscp_protocol_header_t) + sizeof(bsradio_rfconfig_t)) {
 		bsradio->rfconfig = *rfconfig;
 		puts("rfconfig loaded");
 	} else {
@@ -228,7 +226,8 @@ int radio_init(bsradio_instance_t *bsradio) {
 		//		bsradio->rfconfig.freq_dev_hz = 50000;
 		//		bsradio->rfconfig.bandwidth_hz = 100000;
 
-		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD32A6E04;
+//		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD32A6E04;
+		(*(uint32_t*) bsradio->rfconfig.network_id) = 0x03025927;
 		bsradio->rfconfig.network_id_size = 4;
 
 		bsradio->rfconfig.node_id = 0x10;
@@ -269,55 +268,14 @@ int radio_init(bsradio_instance_t *bsradio) {
 	} else
 		return -1;
 
-	/*
-	 * Europe: 433 MHz Band:
-	 * 433.050 MHz to 434.790 MHz:
-	 * +10 dBm if bandwidth ≤ 25 kHz or duty cycle ≤ 10%
-	 * otherwise 0 dBm
-
-	 * Europe: 868 MHz band
-	 * 863.000 to 870.000 MHz: +14 dBm
-	 *		863,00 MHz to 865,00 MHz	≤ 0,1 % duty cycle
-	 *		865,00 MHz to 868,00 MHz	≤ 1,0 % duty cycle
-	 * 		868,00 MHz to 868,60 MHz	≤ 1,0 % duty cycle
-	 * 		868,70 MHz to 869,20 MHz	≤ 0,1 % duty cycle
-	 * 		869,40 MHz to 869,65 MHz	≤ 0.1 % duty cycle
-	 * 		869,70 MHz to 870,00 MHz	≤ 1,0 % duty cycle
-	 *
-	 * 		869,40 MHz to 869,65 MHz:	500 mW = +27 dBm	≤ 10 %
-	 duty cycle
-	 * 		869,70 MHz to 870,00 MHz:	  5 mW =  +7 dBm	 no duty
-	 cycle limit
-	 *
-	 * 		For any duty cycle limit, it says "or polite spectrum access"
-	 * 		Not sure about the definition though.
-	 * 		The dBm is "ERP"
-	 *
-	 *
-	 *
-	 * North America: 915 MHz band:
-	 * 902 to 928 MHz:
-	 * Single Frequency:	–1.23 dBm
-	 * Frequency Hopping:	+24 dBm
-	 * 		The dBm is "EIRP",
-	 * 		ERP = EIRP - 2.15 dB
-	 *
-	 *
-	 * How to these ERP or EIRP values relate to the settings I give to the
-	 module?
-	 * What is the loss of the antenna? What is the directional gain?
-	 * In other words, what am I allowed to set?
-	 */
-
-
-
-	  puts("Radio config");
-	  printf("Bandwidth:      %6d Hz\n", bsradio->rfconfig.bandwidth_hz);
-	  printf("Bitrate:        %6d bps\n", bsradio->rfconfig.birrate_bps);
-	  printf("Freq. dev.      %6d Hz \n", bsradio->rfconfig.freq_dev_hz);
-	  printf("Frequency       %6d kHz\n", bsradio->rfconfig.frequency_kHz);
-	  printf("Network id:     %08lX\n", *(uint32_t*)(bsradio->rfconfig.network_id));
-	  printf("Node id:        %d\n", bsradio->rfconfig.node_id);
+	puts("Radio config");
+	printf("Bandwidth:      %6d Hz\n", bsradio->rfconfig.bandwidth_hz);
+	printf("Bitrate:        %6d bps\n", bsradio->rfconfig.birrate_bps);
+	printf("Freq. dev.      %6d Hz \n", bsradio->rfconfig.freq_dev_hz);
+	printf("Frequency       %6d kHz\n", bsradio->rfconfig.frequency_kHz);
+	printf("Network id:     %08lX\n",
+			*(uint32_t*) (bsradio->rfconfig.network_id));
+	printf("Node id:        %d\n", bsradio->rfconfig.node_id);
 
 	bsradio_init(bsradio);
 
@@ -344,56 +302,15 @@ void SysTick_Handler(void) {
 }
 
 bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
-		protocol_transport_t transport, void* param) {
-
+		protocol_transport_t transport, void *param) {
 
 	if (packet->head.sub = BSCP_SUB_QGET)
 		sensors_send();
 	return 0;
 }
 
-void deviceinfo_send(void) {
-	bsradio_packet_t request = { }, response = { };
-	request.from = gp_radio->rfconfig.node_id; // 0x03;
-	request.to = 0x00;
-#pragma pack(push, 1)
-	struct sensor_data_packet {
-		bscp_protocol_header_t head;
-		bscp_protocol_info_t info[3];
-	} deviceinfo_packet;
-#pragma pack(pop)
-	bscp_protocol_packet_t *packet =
-			(bscp_protocol_packet_t*) &deviceinfo_packet;
-	deviceinfo_packet.head.size = sizeof(deviceinfo_packet);
-	deviceinfo_packet.head.cmd = BSCP_CMD_INFO;
-	deviceinfo_packet.head.sub = BSCP_SUB_SDAT;
-
-	deviceinfo_packet.info[0].cmd = BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE;
-	deviceinfo_packet.info[0].flags = 1
-			<< bsprot_sensor_enviromental_temperature;
-	deviceinfo_packet.info[0].index = 0;
-
-	deviceinfo_packet.info[1].cmd = BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE;
-	deviceinfo_packet.info[1].flags = 1
-			<< bsprot_sensor_enviromental_illuminance;
-	deviceinfo_packet.info[1].index = 1;
-
-	deviceinfo_packet.info[2].cmd = BSCP_CMD_SWITCH;
-	deviceinfo_packet.info[2].flags = 1 << bsprot_switch_onoff;
-	deviceinfo_packet.info[2].index = 0;
-
-	// That's all, send remaining
-	protocol_packet_merge(request.payload, sizeof(request.payload), packet);
-	request.length = 4
-			+ protocol_merged_packet_size(request.payload,
-					sizeof(request.payload));
-	bsradio_send_request(gp_radio, &request, &response);
-	//	request.payload[0] = 0;
-	memset(request.payload, 0, sizeof(request.payload));
-}
-
 bscp_handler_status_t info_handler(bscp_protocol_packet_t *packet,
-		protocol_transport_t transport, void* param) {
+		protocol_transport_t transport, void *param) {
 
 	if (packet->head.sub = BSCP_SUB_QGET)
 		deviceinfo_send();
@@ -408,8 +325,34 @@ void gpio_init() {
 	bshal_gpio_cfg_out(1, pushpull, 0);
 }
 
+bscp_handler_status_t pair_handler(bscp_protocol_packet_t *packet,
+		protocol_transport_t transport, void *param) {
+	switch (packet->head.sub) {
+	case BSCP_SUB_QGET:
+		return BSCP_HANDLER_STATUS_BADSUB;
+	case BSCP_SUB_QSET:
+
+	{
+		pairing_t *pairing =(pairing_t *)(packet->data);
+		m_radio.rfconfig.network_id_size = 4;
+		(*(uint32_t*)(m_radio.rfconfig.network_id))=pairing->network_id;
+		m_radio.rfconfig.node_id = pairing->node_id;
+		m_radio.rfconfig.broadcast_id = 0xFF;
+
+		i2c_eeprom_program(&i2c_eeprom_config, 0x14, &m_radio.rfconfig, 0x23);
+		puts("Done");
+
+	}
+		//--
+
+		return BSCP_HANDLER_STATUS_OK;
+	default:
+		return BSCP_HANDLER_STATUS_BADSUB;
+	}
+}
+
 bscp_handler_status_t unixtime_handler(bscp_protocol_packet_t *packet,
-		protocol_transport_t transport, void* param) {
+		protocol_transport_t transport, void *param) {
 
 	time_t unixtime = *(uint32_t*) packet->data;
 	switch (packet->head.sub) {
@@ -426,7 +369,7 @@ bscp_handler_status_t unixtime_handler(bscp_protocol_packet_t *packet,
 }
 
 bscp_handler_status_t switch_onoff_handler(bscp_protocol_packet_t *packet,
-		protocol_transport_t transport, void* param) {
+		protocol_transport_t transport, void *param) {
 	switch (packet->head.sub) {
 	case BSCP_SUB_QGET:
 		// TODO
@@ -464,23 +407,22 @@ void calibrate_clock() {
 	display_apply();
 
 	time_t t = time(NULL);
-	while(t==time(NULL));
+	while (t == time(NULL))
+		;
 	t = time(NULL);
 	uint32_t a = get_time_ms();
-	while(t==time(NULL));
+	while (t == time(NULL))
+		;
 	uint32_t b = get_time_ms();
 	uint32_t c = b - a;
-	printf("clock speed deviation: %d\n",c);
+	printf("clock speed deviation: %d\n", c);
 }
-
 
 int main() {
 	SEGGER_RTT_Init();
 
-
-	puts(  "BlaatSchaap Domotica: AC Switch");
+	puts("BlaatSchaap Domotica: AC Switch");
 	printf("Serial: %s\n", get_serial_string());
-
 
 	extern void ClockSetup_HSI_SYS48(void); // TODO
 	extern void ClockSetup_HSE8_SYS48(void);
@@ -492,7 +434,6 @@ int main() {
 	ClockSetup_HSI_SYS36();
 
 	HAL_Init(); // gah
-
 
 	rtc_init();
 	timer_init();
@@ -521,10 +462,12 @@ int main() {
 	bsradio_set_mode(&m_radio, mode_receive);
 
 	protocol_register_command(sensordata_handler,
-			BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE);
+	BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE);
 	protocol_register_command(switch_onoff_handler, BSCP_CMD_SWITCH);
 	protocol_register_command(info_handler, BSCP_CMD_INFO);
 	protocol_register_command(unixtime_handler, BSCP_CMD_UNIXTIME);
+
+	protocol_register_command(pair_handler, BSCP_CMD_PAIR);
 
 	while (1) {
 
@@ -545,7 +488,7 @@ int main() {
 
 				// Calibration to fund the tune value, for SXv1 (RFM69)
 				// this is the frequency offset in kHz
-				(void)m_radio.hwconfig.tune;
+				(void) m_radio.hwconfig.tune;
 
 				sxv1_set_frequency(&m_radio, 870000);
 
@@ -600,4 +543,25 @@ int main() {
 			memset(&response, 0, sizeof(response));
 		}
 	}
+}
+
+uint32_t get_network_id(void) {
+	return *((uint32_t*) m_radio.rfconfig.network_id);
+}
+
+uint8_t get_node_id(void) {
+	return m_radio.rfconfig.node_id;
+}
+
+void enter_normal_mode(void) {
+	i2c_eeprom_program(&i2c_eeprom_config, 0x14, &(m_radio.rfconfig), 0x23);
+	bsradio_init(&m_radio);
+}
+
+void enter_pair_mode(void) {
+	static bsradio_instance_t radio_pairmode;
+	radio_pairmode = m_radio;
+	(*(uint32_t*) radio_pairmode.rfconfig.network_id) = 0xdeadbeef;
+	radio_pairmode.rfconfig.node_id = 0xFE;
+	bsradio_init(&radio_pairmode);
 }

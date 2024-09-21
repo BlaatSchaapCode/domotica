@@ -30,7 +30,7 @@ void sensorDataThread(DeviceManager *dm, uint32_t dongle_id, uint8_t node_id, un
 		if (d) {
 			printf("Requesting dongle %08X node %d\n", dongle_id, node_id);
 			d->getInfo(node_id);
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 			d->getData(node_id);
 		}
 

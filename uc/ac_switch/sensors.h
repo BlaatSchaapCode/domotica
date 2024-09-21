@@ -12,4 +12,6 @@ void sensors_send(void);
 void sensors_init(void);
 void sensors_process(void);
 
+void deviceinfo_send(void);
+
 #endif /* SENSORS_H_ */

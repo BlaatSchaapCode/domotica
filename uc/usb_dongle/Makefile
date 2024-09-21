@@ -56,8 +56,11 @@ C_INCLUDES += $(LIBHALGLUE_ROOT)/bshal/
 C_INCLUDES += $(LIBHALGLUE_ROOT)/bshal/stm32
 C_INCLUDES += $(LIBHALGLUE_ROOT)/hal/
 
-C_INCLUDES += $(UCDEV_ROOT)/lib/spi_flash
-C_SOURCES += $(UCDEV_ROOT)/lib/spi_flash/spi_flash.c
+#C_INCLUDES += $(UCDEV_ROOT)/lib/spi_flash
+#C_SOURCES += $(UCDEV_ROOT)/lib/spi_flash/spi_flash.c
+C_INCLUDES += $(UCDEV_ROOT)/lib/i2c_eeprom
+C_SOURCES += $(UCDEV_ROOT)/lib/i2c_eeprom/i2c_eeprom.c
+
 
 LDFLAGS +=  -L$(UCDEV_ROOT)/build/staticlib/rtt/debug/arm_m3  -lrtt
 C_SOURCES +=  $(UCDEV_ROOT)/ext/RTT/Syscalls/SEGGER_RTT_Syscalls_GCC.c

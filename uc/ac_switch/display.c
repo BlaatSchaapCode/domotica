@@ -88,8 +88,12 @@ void display_process(void) {
 		u8g2_SetPowerSave(&m_u8g2, false);
 		if (state == 0x01) {
 			state = 0x10;
+			extern void enter_pair_mode(void);
+			enter_pair_mode();
 		} else if (state == 0x10) {
 			state = 0x01;
+			extern void enter_normal_mode(void);
+			enter_normal_mode();
 		}
 	}
 		break;
@@ -130,7 +134,14 @@ void display_process(void) {
 		break;
 	case 0x10:
 		display_print_upper("  pair");
-		display_print_middle("  mode");
+		extern uint32_t get_network_id(void);
+		sprintf(buff, "%08X", get_network_id());
+		display_print_middle(buff);
+		extern uint8_t get_node_id(void);
+		sprintf(buff, "Node %3d", get_node_id());
+		display_print_lower(buff);
+
+
 		break;
 	default:
 		state = 0;

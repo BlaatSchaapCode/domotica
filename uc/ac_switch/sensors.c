@@ -21,6 +21,7 @@
 
 #include "bsradio.h"
 #include "sensor_protocol.h"
+#include "switch_protocol.h"
 #include "timer.h"
 
 #include <stdio.h>
@@ -37,6 +38,11 @@ ds18b20_t ds18b20 = { };
 int16_t lm75b_temperature_centi_celcius;
 uint16_t bh1750_illuminance_lux;
 int16_t ds18b20_temperature_centi_celcius;
+
+
+short accum lm75b_temperature_celcius;
+short accum ds18b20_temperature_celcius;
+
 
 bool lm75b_ready = false;
 bool bh1750_ready = false;
@@ -73,7 +79,7 @@ void sensors_send(void) {
 					+ protocol_merged_packet_size(request.payload,
 							sizeof(request.payload));
 			bsradio_send_request(gp_radio, &request, &response);
-//			request.payload[0] = 1;  // why was this here?
+			//			request.payload[0] = 1;  // why was this here?
 			memset(request.payload, 0, sizeof(request.payload));
 			protocol_packet_merge(request.payload, sizeof(request.payload),
 					packet);
@@ -145,26 +151,66 @@ void sensors_process(void) {
 			//			lm75b_get_temperature_C_float(&lm75b,
 			//&temperature_f); 			lm75b_temperature_centi_celcius = 100 * temperature_f;
 
-			accum temperature_a;
-			lm75b_get_temperature_C_accum(&lm75b, &temperature_a);
+			short accum temperature_a;
+			int result = lm75b_get_temperature_C_accum(&lm75b, &temperature_a);
+			if(result) {
+				puts("lm75b_get_temperature_C_accum failed");
+				return;
+			}
+
+			lm75b_temperature_celcius = temperature_a;
 			lm75b_temperature_centi_celcius = 100 * temperature_a;
 
+
+			if (lm75b_temperature_centi_celcius > 4000) {
+				puts("Unexpected value");
+				return;
+			}
+
+
 			lm75b_ready = true;
+			printf("75: %4d\n",lm75b_temperature_centi_celcius);
 		}
 
 		if (bh1750.addr) {
 			static int lux = 0;
-			bh1750_measure_ambient_light(&bh1750, &lux);
+			bh1750_ready =! bh1750_measure_ambient_light(&bh1750, &lux);
 			bh1750_illuminance_lux = lux;
-			bh1750_ready = true;
+
 		}
 
 		if (ds18b20.device_id) {
-			ds18x20_convert(&ds18b20);
+			int result;
+			result = ds18x20_convert(&ds18b20);
+			if (result) {
+				puts("ds18x20_convert failed");
+				return;
+			}
+
+			/*
 			float temp;
-			ds18x20_read(&ds18b20, &temp);
-			ds18b20_ready = true;
+			result = ds18x20_read_float(&ds18b20, &temp);
+			if (result) {
+				puts("ds18x20_read failed");
+				return;
+			}
+			ds18b20_temperature_celcius = temp;
 			ds18b20_temperature_centi_celcius = 100 * temp;
+			if (ds18b20_temperature_centi_celcius > 4000) {
+				puts("Unexpected value");
+				return;
+			}
+			 */
+			short accum temp;
+			result =  ds18x20_read_saccum(&ds18b20,  &temp);
+			if (result) {
+				puts("ds18x20_read failed");
+				return;
+			}
+			ds18b20_temperature_celcius = temp;
+			ds18b20_temperature_centi_celcius = temp*100;
+			ds18b20_ready = true;
+			printf("20: %4d\n",ds18b20_temperature_centi_celcius);
 		}
 	}
 }
@@ -194,7 +240,58 @@ void sensors_init(void) {
 		puts("DS18B20:OK");
 	} else {
 		puts("DS18B20:FAIL");
-		ds18b20.device_id  = 0;
+		ds18b20.device_id = 0;
 	}
 
+}
+
+void deviceinfo_send(void) {
+	bsradio_packet_t request = { }, response = { };
+	request.from = gp_radio->rfconfig.node_id; // 0x03;
+	request.to = 0x00;
+#pragma pack(push, 1)
+	struct sensor_data_packet {
+		bscp_protocol_header_t head;
+		bscp_protocol_info_t info[4];
+	} deviceinfo_packet = { };
+#pragma pack(pop)
+	bscp_protocol_packet_t *packet =
+			(bscp_protocol_packet_t*) &deviceinfo_packet;
+	deviceinfo_packet.head.size = sizeof(deviceinfo_packet);
+	deviceinfo_packet.head.cmd = BSCP_CMD_INFO;
+	deviceinfo_packet.head.sub = BSCP_SUB_SDAT;
+
+	if (lm75b.addr) {
+		deviceinfo_packet.info[0].cmd = BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE;
+		deviceinfo_packet.info[0].flags = 1
+				<< bsprot_sensor_enviromental_temperature;
+		deviceinfo_packet.info[0].index = 0;
+	}
+
+	if (bh1750.addr) {
+		deviceinfo_packet.info[1].cmd = BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE;
+		deviceinfo_packet.info[1].flags = 1
+				<< bsprot_sensor_enviromental_illuminance;
+		deviceinfo_packet.info[1].index = 1;
+	}
+
+	deviceinfo_packet.info[2].cmd = BSCP_CMD_SWITCH;
+	deviceinfo_packet.info[2].flags = 1 << bsprot_switch_onoff;
+	deviceinfo_packet.info[2].index = 0;
+
+	if ((ds18b20.device_id & 0xFF) == DS18B20_FAMILY_CODE) {
+		deviceinfo_packet.info[3].cmd = BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE;
+		deviceinfo_packet.info[3].flags = 1
+				<< bsprot_sensor_enviromental_temperature;
+		deviceinfo_packet.info[3].index = 2;
+	}
+
+	// That's all, send remaining
+	protocol_packet_merge(request.payload, sizeof(request.payload), packet);
+	request.length = 4
+			+ protocol_merged_packet_size(request.payload,
+					sizeof(request.payload));
+	bsradio_send_request(gp_radio, &request, &response);
+	//	request.payload[0] = 0;
+	memset(request.payload, 0, sizeof(request.payload));
 }

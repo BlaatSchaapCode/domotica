@@ -251,9 +251,9 @@ int main(int argc, char *argv[]) {
 //
 //	}
 
-//	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x01, 60).detach();
+	std::thread(sensorDataThread, &m_dm, 0x03025927, 0x06, 10).detach();
 //	std::this_thread::sleep_for(std::chrono::seconds(1));
-//	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x03, 60).detach();
+//	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x10, 10).detach();
 
 	while (1) sleep(1);
 

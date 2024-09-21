@@ -33,10 +33,6 @@ SensorManager::SensorManager() {
 	} else {
 		fprintf(stdout, "Tables are ok:  %s\n", sqlite3_errmsg(mDb));
 	}
-
-
-
-
 }
 
 SensorManager::~SensorManager() {

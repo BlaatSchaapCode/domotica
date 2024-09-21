@@ -129,7 +129,7 @@ Device::~Device() {
 				// still do so later. This is not expected to happen, but
 				// when it does, we'll probably crash!
 				puts(
-						"[ERROR] Timeout cancelling transfer. We might crash later.");
+						"[ERROR] Timeout canceling transfer. We might crash later.");
 			}
 		} else {
 			// We expect this to happen
