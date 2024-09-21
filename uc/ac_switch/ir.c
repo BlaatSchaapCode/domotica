@@ -92,6 +92,7 @@ void ir_handler(bool pinstate) {
 //     printf("HI %6d\n", hi_time);
 
     switch (ir_state) {
+    default:break;
     // TODO margins
     case ir_presync: {
       if (hi_time > SYNC_HI) {
@@ -134,6 +135,7 @@ void ir_handler(bool pinstate) {
 //     printf("LO %6d\n", lo_time);
 
     switch (ir_state) {
+    default:break;
     case ir_idle: {
       // TODO margins
       if (lo_time > SYNC_LO) {

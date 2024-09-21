@@ -64,7 +64,7 @@ void display_process(void) {
 	static int state = 1;
 	bool light_status = light_switch_get();
 	static bool display_status = true;
-	static int addrentry[3];
+
 
 	memset(buff, 0x20, 8);
 
@@ -135,7 +135,7 @@ void display_process(void) {
 	case 0x10:
 		display_print_upper("  pair");
 		extern uint32_t get_network_id(void);
-		sprintf(buff, "%08X", get_network_id());
+		sprintf(buff, "%08lX", get_network_id());
 		display_print_middle(buff);
 		extern uint8_t get_node_id(void);
 		sprintf(buff, "Node %3d", get_node_id());

@@ -285,13 +285,13 @@ int radio_init(bsradio_instance_t *bsradio) {
 	switch (chip_version) {
 	case 0x23:
 		puts("SX123x : OK");
-		break;
+		return 0;
 	case 0x24:
 		puts("SX1231H: OK");
-		break;
+		return 0;
 	default:
 		puts("SX123x : FAIL");
-		break;
+		return -1;
 	}
 
 }
@@ -304,7 +304,7 @@ void SysTick_Handler(void) {
 bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 		protocol_transport_t transport, void *param) {
 
-	if (packet->head.sub = BSCP_SUB_QGET)
+	if (packet->head.sub == BSCP_SUB_QGET)
 		sensors_send();
 	return 0;
 }
@@ -312,7 +312,7 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 bscp_handler_status_t info_handler(bscp_protocol_packet_t *packet,
 		protocol_transport_t transport, void *param) {
 
-	if (packet->head.sub = BSCP_SUB_QGET)
+	if (packet->head.sub == BSCP_SUB_QGET)
 		deviceinfo_send();
 	return 0;
 }
@@ -415,7 +415,7 @@ void calibrate_clock() {
 		;
 	uint32_t b = get_time_ms();
 	uint32_t c = b - a;
-	printf("clock speed deviation: %d\n", c);
+	printf("clock speed deviation: %ld\n", c);
 }
 
 int main() {

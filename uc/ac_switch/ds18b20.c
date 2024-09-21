@@ -224,7 +224,7 @@ int ds18x20_convert(ds18b20_t *ds18b20) {
 			return -1; // timeout
 		ds18x20_read_bit(ONEWIRE_PIN, &readbit);
 	}
-	int end = get_time_us();
+//	int end = get_time_us();
 //	printf("Conversion took %d ms\n",(end-begin)/1000);
 	return result;
 }
