@@ -62,7 +62,9 @@ void mqqt_test::on_message(const struct mosquitto_message *message) {
 			int state;
 			sscanf(payload, "%d", &state);
 			// TODO, SensorManager to derive dongle id
-			auto d = p_dm->getDevice(0xD32A6E04);
+			//auto d = p_dm->getDevice(0x03025927);
+			auto d = p_dm->getDevice(0xD0226E5D);
+
 			if (d) {
 				d->setSwitch(node_id, state);
 			}

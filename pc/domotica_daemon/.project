@@ -28,7 +28,7 @@
 		<link>
 			<name>bsprot</name>
 			<type>2</type>
-			<locationURI>PARENT-3-PROJECT_LOC/uc/ucdev/lib/bsprot</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/uc/ucdev/lib/bsprot</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

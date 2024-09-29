@@ -227,7 +227,9 @@ int radio_init(bsradio_instance_t *bsradio) {
 		//		bsradio->rfconfig.bandwidth_hz = 100000;
 
 //		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD32A6E04;
-		(*(uint32_t*) bsradio->rfconfig.network_id) = 0x03025927;
+		//(*(uint32_t*) bsradio->rfconfig.network_id) = 0x03025927;
+		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD0226E5D;
+
 		bsradio->rfconfig.network_id_size = 4;
 
 		bsradio->rfconfig.node_id = 0x10;
@@ -269,10 +271,10 @@ int radio_init(bsradio_instance_t *bsradio) {
 		return -1;
 
 	puts("Radio config");
-	printf("Bandwidth:      %6d Hz\n", bsradio->rfconfig.bandwidth_hz);
-	printf("Bitrate:        %6d bps\n", bsradio->rfconfig.birrate_bps);
-	printf("Freq. dev.      %6d Hz \n", bsradio->rfconfig.freq_dev_hz);
-	printf("Frequency       %6d kHz\n", bsradio->rfconfig.frequency_kHz);
+	printf("Bandwidth:      %6ld Hz\n", bsradio->rfconfig.bandwidth_hz);
+	printf("Bitrate:        %6ld bps\n", bsradio->rfconfig.birrate_bps);
+	printf("Freq. dev.      %6ld Hz \n", bsradio->rfconfig.freq_dev_hz);
+	printf("Frequency       %6ld kHz\n", bsradio->rfconfig.frequency_kHz);
 	printf("Network id:     %08lX\n",
 			*(uint32_t*) (bsradio->rfconfig.network_id));
 	printf("Node id:        %d\n", bsradio->rfconfig.node_id);
@@ -435,7 +437,6 @@ int main() {
 
 	HAL_Init(); // gah
 
-	rtc_init();
 	timer_init();
 
 	// Time zone on the microcontroller
@@ -452,7 +453,12 @@ int main() {
 	i2c_init();
 
 	display_init();
-//	calibrate_clock();
+
+	display_clear();
+	display_print_middle("Domotica");
+	display_apply();
+
+	rtc_init();
 	timer_init();
 
 	sensors_init();

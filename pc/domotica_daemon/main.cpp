@@ -73,6 +73,7 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 	// Home assistant values
 	const char *device_class = nullptr;
 	const char *unit_of_measurement = nullptr;
+	(void)unit_of_measurement;
 
 	int unit_id = forward_data.transport.from;
 	int sens_id = sensordata->id;
@@ -155,6 +156,32 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 }
 
 bscp_handler_status_t info_handler(bscp_protocol_packet_t *data,
+		protocol_transport_t transport, void *param) {
+	puts("Received info");
+	forward_data_t forward_data = *(forward_data_t*) (param);
+	bscp_protocol_info_t *info = (bscp_protocol_info_t*) data->data;
+	int count = (data->head.size - sizeof(data->head))
+			/ sizeof(bscp_protocol_info_t);
+
+	g_sm.nodeInfoReset(forward_data.dongle_id, forward_data.transport.from);
+
+	for (int i = 0; i < count; i++) {
+		switch (info[i].cmd) {
+		case BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE:
+			g_sm.nodeInfoAddSensor(forward_data.dongle_id, forward_data.transport.from,i, info[i].flags);
+			break;
+		case BSCP_CMD_SWITCH:
+			g_sm.nodeInfoAddSwitch(forward_data.dongle_id, forward_data.transport.from,i, info[i].flags);
+			break;
+		}
+	}
+
+	g_sm.nodeInfoPublish(forward_data.dongle_id, forward_data.transport.from);
+	return BSCP_HANDLER_STATUS_OK;
+
+}
+
+bscp_handler_status_t info_handler_(bscp_protocol_packet_t *data,
 		protocol_transport_t transport, void *  param) {
 	puts("Received info");
 	forward_data_t forward_data  = *(forward_data_t*)(param);
@@ -251,9 +278,13 @@ int main(int argc, char *argv[]) {
 //
 //	}
 
-	std::thread(sensorDataThread, &m_dm, 0x03025927, 0x06, 10).detach();
+//	std::thread(sensorDataThread, &m_dm, 0x03025927, 0x03, 10).detach();
 //	std::this_thread::sleep_for(std::chrono::seconds(1));
 //	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x10, 10).detach();
+
+
+//	std::thread(sensorDataThread, &m_dm, 0xD0226E5D, 0x06, 10).detach();
+
 
 	while (1) sleep(1);
 
