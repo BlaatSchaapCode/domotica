@@ -306,6 +306,7 @@ void Device::process_recv_queue_code(Device *dev) {
 
 int Device::setTime(int node_id) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
+	memset(packet,0, 256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
 		packet->head.sub = BSCP_SUB_QSET;
@@ -337,6 +338,7 @@ int Device::setTime(int node_id) {
 
 int Device::getData(int node_id) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
+	memset(packet,0, 256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
 		packet->head.sub = BSCP_SUB_QSET;
@@ -369,6 +371,7 @@ int Device::getData(int node_id) {
 //--
 int Device::getInfo(int node_id) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
+	memset(packet,0, 256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
 		packet->head.sub = BSCP_SUB_QSET;
@@ -401,6 +404,7 @@ int Device::getInfo(int node_id) {
 
 int Device::setSwitch(int node_id, bool onoff) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
+	memset(packet,0, 256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
 		packet->head.sub = BSCP_SUB_QSET;

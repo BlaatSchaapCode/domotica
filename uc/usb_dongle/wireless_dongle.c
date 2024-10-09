@@ -302,7 +302,10 @@ bscp_handler_status_t forward_handler(bscp_protocol_packet_t *packet,
 			int result = bsradio_send_request(&m_radio, &request, &response);
 			if (transport == PROTOCOL_TRANSPORT_USB) {
 				static bscp_protocol_packet_t usb_response;
+				bscp_protocol_forward_t* forward_response = (bscp_protocol_forward_t*)(usb_response.data);
+				forward_response->head = forward->head;
 				usb_response.head = packet->head;
+				usb_response.head.size = sizeof (forward->head) + sizeof (usb_response.head);
 				usb_response.head.res = result;
 				usb_response.head.sub = BSCP_SUB_SSTA;
 				bscp_usbd_transmit(gp_usbd, 0x81, &usb_response,
@@ -458,7 +461,8 @@ int main() {
 					sizeof(bscp_protocol_forward_t) +
 					sizeof(request.payload);
 			forward_packet->head.cmd = BSCP_CMD_FORWARD;
-			forward_packet->head.sub = BSCP_SUB_SDAT;
+			//forward_packet->head.sub = BSCP_SUB_SDAT;
+			forward_packet->head.sub = BSCP_SUB_QSET;
 
 			forward_data->head.transport = PROTOCOL_TRANSPORT_RF;
 			forward_data->head.from = request.from;

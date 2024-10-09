@@ -9,7 +9,8 @@
 #define SENSORMANAGER_HPP_
 
 
-#include <vector>
+#include <set>
+#include <mutex>
 
 #include <sqlite3.h>
 
@@ -20,6 +21,8 @@ public:
 	SensorManager();
 	virtual ~SensorManager();
 
+	void begin(void);
+
 	void dongleArrived(uint32_t);
 	void dongleLeft(uint32_t);
 
@@ -29,6 +32,11 @@ public:
 	void nodeInfoPublish(uint32_t dongle_id, uint8_t node_id);
 
 private:
+
+	std::set<uint32_t> mDongles;
+	std::mutex mMutex;
+	static void sensorThread(SensorManager*);
+
 	sqlite3 *mDb;
 
 	const char * mCreateTables= ""

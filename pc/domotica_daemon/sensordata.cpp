@@ -24,6 +24,8 @@ void sensorDataThread(DeviceManager *dm, uint32_t dongle_id, uint8_t node_id, un
 	snprintf(threadName,16, "%08X_%d_Dt", dongle_id, node_id);
 	setThreadName(threadName);
 
+	std::this_thread::sleep_for(std::chrono::seconds(node_id));
+
 	auto d = dm->getDevice(dongle_id);
 	if (d) {
 		printf("Requesting dongle %08X node %d\n", dongle_id, node_id);
