@@ -435,3 +435,7 @@ int Device::setSwitch(int node_id, bool onoff) {
 
 	return 0;
 }
+
+int Device::enqueuePacket(bscp_protocol_packet_t*){
+	return -1;
+}

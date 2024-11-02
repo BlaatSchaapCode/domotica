@@ -62,7 +62,7 @@ void sensors_send(void) {
 	bscp_protocol_packet_t *packet =
 			(bscp_protocol_packet_t*) (&sensor_data_packet);
 	sensor_data_packet.head.size = sizeof(sensor_data_packet);
-	sensor_data_packet.head.cmd = BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE;
+	sensor_data_packet.head.cmd = BSCP_CMD_SENSOR0_VALUE;
 	sensor_data_packet.head.sub = BSCP_SUB_SDAT;
 #pragma pack(pop)
 	if (lm75b_ready) {
@@ -262,14 +262,14 @@ void deviceinfo_send(void) {
 	deviceinfo_packet.head.sub = BSCP_SUB_SDAT;
 
 	if (lm75b.addr) {
-		deviceinfo_packet.info[0].cmd = BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE;
+		deviceinfo_packet.info[0].cmd = BSCP_CMD_SENSOR0_VALUE;
 		deviceinfo_packet.info[0].flags = 1
 				<< bsprot_sensor_enviromental_temperature;
 		deviceinfo_packet.info[0].index = 0;
 	}
 
 	if (bh1750.addr) {
-		deviceinfo_packet.info[1].cmd = BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE;
+		deviceinfo_packet.info[1].cmd = BSCP_CMD_SENSOR0_VALUE;
 		deviceinfo_packet.info[1].flags = 1
 				<< bsprot_sensor_enviromental_illuminance;
 		deviceinfo_packet.info[1].index = 1;
@@ -280,7 +280,7 @@ void deviceinfo_send(void) {
 	deviceinfo_packet.info[2].index = 0;
 
 	if ((ds18b20.device_id & 0xFF) == DS18B20_FAMILY_CODE) {
-		deviceinfo_packet.info[3].cmd = BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE;
+		deviceinfo_packet.info[3].cmd = BSCP_CMD_SENSOR0_VALUE;
 		deviceinfo_packet.info[3].flags = 1
 				<< bsprot_sensor_enviromental_temperature;
 		deviceinfo_packet.info[3].index = 2;

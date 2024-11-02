@@ -468,7 +468,7 @@ int main() {
 	bsradio_set_mode(&m_radio, mode_receive);
 
 	protocol_register_command(sensordata_handler,
-	BSCP_CMD_SENSOR_ENVIOREMENTAL_VALUE);
+	BSCP_CMD_SENSOR0_VALUE);
 	protocol_register_command(switch_onoff_handler, BSCP_CMD_SWITCH);
 	protocol_register_command(info_handler, BSCP_CMD_INFO);
 	protocol_register_command(unixtime_handler, BSCP_CMD_UNIXTIME);

@@ -114,7 +114,7 @@ void SensorManager::sensorThread(SensorManager *_this) {
 					rc = sqlite3_step(res);
 					std::this_thread::sleep_for(std::chrono::milliseconds(500));
 				}
-
+				sqlite3_finalize(res);
 			}
 		}
 	}
@@ -140,7 +140,7 @@ void SensorManager::dongleArrived(uint32_t dongle_id) {
 				sqlite3_column_int(res, 0));
 		const std::lock_guard<std::mutex> lock(mMutex);
 		mDongles.insert(dongle_id);
-		printf("Dongle %08X is now online\n");
+		printf("Dongle %08X is now online\n", dongle_id);
 
 	} else {
 		//puts ("This Dongle has not been found in the database");

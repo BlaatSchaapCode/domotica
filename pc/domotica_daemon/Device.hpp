@@ -38,6 +38,9 @@ class Device : public IDevice {
     int setSwitch(int node_id, bool onoff);
     int getInfo(int node_id);
 
+
+    int enqueuePacket(bscp_protocol_packet_t*);
+
   private:
     libusb_device *m_usb_device  = nullptr;
     libusb_device_handle *m_usb_handle = nullptr;
