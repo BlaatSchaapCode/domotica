@@ -69,7 +69,7 @@ void sensors_send(void) {
 		lm75b_ready = false;
 
 		sensor_data_packet.data.id = 0;
-		sensor_data_packet.data.type = bsprot_sensor_enviromental_temperature;
+		sensor_data_packet.data.type = bsprot_sensor_temperature;
 		sensor_data_packet.data.value.temperature_centi_celcius =
 				lm75b_temperature_centi_celcius;
 		if (protocol_packet_merge(request.payload, sizeof(request.payload),
@@ -90,7 +90,7 @@ void sensors_send(void) {
 		bh1750_ready = false;
 
 		sensor_data_packet.data.id = 1;
-		sensor_data_packet.data.type = bsprot_sensor_enviromental_illuminance;
+		sensor_data_packet.data.type = bsprot_sensor_illuminance;
 		sensor_data_packet.data.value.illuminance_lux = bh1750_illuminance_lux;
 		if (protocol_packet_merge(request.payload, sizeof(request.payload),
 				packet)) {
@@ -110,7 +110,7 @@ void sensors_send(void) {
 		ds18b20_ready = false;
 
 		sensor_data_packet.data.id = 2;
-		sensor_data_packet.data.type = bsprot_sensor_enviromental_temperature;
+		sensor_data_packet.data.type = bsprot_sensor_temperature;
 		sensor_data_packet.data.value.temperature_centi_celcius =
 				ds18b20_temperature_centi_celcius;
 		if (protocol_packet_merge(request.payload, sizeof(request.payload),
@@ -264,14 +264,14 @@ void deviceinfo_send(void) {
 	if (lm75b.addr) {
 		deviceinfo_packet.info[0].cmd = BSCP_CMD_SENSOR0_VALUE;
 		deviceinfo_packet.info[0].flags = 1
-				<< bsprot_sensor_enviromental_temperature;
+				<< bsprot_sensor_temperature;
 		deviceinfo_packet.info[0].index = 0;
 	}
 
 	if (bh1750.addr) {
 		deviceinfo_packet.info[1].cmd = BSCP_CMD_SENSOR0_VALUE;
 		deviceinfo_packet.info[1].flags = 1
-				<< bsprot_sensor_enviromental_illuminance;
+				<< bsprot_sensor_illuminance;
 		deviceinfo_packet.info[1].index = 1;
 	}
 
@@ -282,7 +282,7 @@ void deviceinfo_send(void) {
 	if ((ds18b20.device_id & 0xFF) == DS18B20_FAMILY_CODE) {
 		deviceinfo_packet.info[3].cmd = BSCP_CMD_SENSOR0_VALUE;
 		deviceinfo_packet.info[3].flags = 1
-				<< bsprot_sensor_enviromental_temperature;
+				<< bsprot_sensor_temperature;
 		deviceinfo_packet.info[3].index = 2;
 	}
 

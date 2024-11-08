@@ -112,7 +112,9 @@ void SensorManager::sensorThread(SensorManager *_this) {
 						}
 					}
 					rc = sqlite3_step(res);
-					std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+					// if send queue works as intended, this sleep won't be needed
+					//std::this_thread::sleep_for(std::chrono::milliseconds(500));
 				}
 				sqlite3_finalize(res);
 			}

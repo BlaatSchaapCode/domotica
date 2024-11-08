@@ -44,19 +44,11 @@ extern "C" {
 // External library includes
 #include <libusb.h>
 
-extern "C" {
-// Internal library includes
-#include "protocol.h"
-#include "time_protocol.h"
-}
 // Project includes
 #include "threadname.hpp"
 
-
-
 #include "SensorManager.hpp"
 extern SensorManager g_sm;
-
 
 Device::Device(libusb_device_handle *handle) {
 	this->m_usb_device = libusb_get_device(handle);
@@ -81,7 +73,7 @@ Device::Device(libusb_device_handle *handle) {
 			m_usb_descriptor_device.iSerialNumber, m_usb_string_serial,
 			sizeof(m_usb_string_serial));
 
-	sscanf((const char*)m_usb_string_serial, "%08X" , &m_serial);
+	sscanf((const char*) m_usb_string_serial, "%08X", &m_serial);
 
 	retval = libusb_claim_interface(m_usb_handle, 0);
 
@@ -92,6 +84,9 @@ Device::Device(libusb_device_handle *handle) {
 
 	m_recv_queue_running = true;
 	m_recv_queue_thread = std::thread(process_recv_queue_code, this);
+
+	m_send_queue_running = true;
+	m_send_queue_thread = std::thread(process_send_queue_code, this);
 
 	m_transfer_in = libusb_alloc_transfer(0);
 	libusb_fill_bulk_transfer(m_transfer_in, handle, 0x81, m_recv_buffer,
@@ -133,7 +128,7 @@ Device::~Device() {
 			}
 		} else {
 			// We expect this to happen
-//				puts("Error cancelling transfer.");
+			//				puts("Error cancelling transfer.");
 		}
 		libusb_free_transfer(m_transfer_in);
 		m_transfer_in = nullptr;
@@ -172,7 +167,7 @@ void Device::libusb_transfer_cb(struct libusb_transfer *xfr) {
 				recvData.resize(4 + xfr->actual_length, 0);
 				memcpy(4 + recvData.data(), xfr->buffer, xfr->actual_length);
 				//recvData[0] = xfr->endpoint;
-				(*(uint32_t*)&recvData[0]) = _this->m_serial;
+				(*(uint32_t*) &recvData[0]) = _this->m_serial;
 				std::unique_lock<std::mutex> lk(_this->m_recv_queue_mutex);
 				_this->m_recv_queue.push_back(recvData);
 				_this->m_recv_queue_cv.notify_all();
@@ -277,8 +272,49 @@ void Device::libusb_transfer_cb(struct libusb_transfer *xfr) {
 	}
 }
 
+
+
+void Device::process_send_queue_code(Device *dev) {
+	setThreadName(std::string((char*) dev->m_usb_string_serial) + "_send");
+
+	while (dev->m_send_queue_running) {
+		unique_lock<mutex> lk(dev->m_send_queue_mutex);
+		dev->m_send_queue_cv.wait(lk);
+		if (!dev->m_send_queue_running)
+			return;
+
+		while (dev->m_send_queue.size()) {
+			if (!dev->m_send_queue_running)
+				return;
+
+			auto packet = dev->m_send_queue.front();
+
+			printf(
+					"Message Sending Queue Sending packet SIZE: %3d, CMD: %02X\n",
+					packet->head.size, packet->head.cmd);
+
+			libusb_transfer *t = libusb_alloc_transfer(0);
+			if (t) {
+				libusb_fill_bulk_transfer(t, dev->m_usb_handle, 0x01,
+						(uint8_t*) packet, packet->head.size,
+						Device::libusb_transfer_cb, dev, 50000);
+				auto result = libusb_submit_transfer(t);
+				printf("Result %d\n", result);
+			}
+
+			dev->m_send_queue.pop_front();
+
+			// Fixed sleep for now.
+			// TODO: Wait for response, and if forwarding packet success
+			// wait for additional message.
+//			this_thread::sleep_for(500ms);
+			this_thread::sleep_for(1s);
+		}
+	}
+}
+
 void Device::process_recv_queue_code(Device *dev) {
-	setThreadName(std::string((char*) dev->m_usb_string_serial) + "_Proc");
+	setThreadName(std::string((char*) dev->m_usb_string_serial) + "_Recv");
 
 	while (dev->m_recv_queue_running) {
 		unique_lock<mutex> lk(dev->m_recv_queue_mutex);
@@ -294,7 +330,7 @@ void Device::process_recv_queue_code(Device *dev) {
 
 			size_t size = data.size() - 4;
 			uint8_t *buffer = data.data() + 4;
-			uint32_t dongle_id = *(uint32_t*)(data.data());
+			uint32_t dongle_id = *(uint32_t*) (data.data());
 			(void) size;
 
 			protocol_parse(buffer, size, PROTOCOL_TRANSPORT_USB, &dongle_id);
@@ -306,18 +342,19 @@ void Device::process_recv_queue_code(Device *dev) {
 
 int Device::setTime(int node_id) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
-	memset(packet,0, 256);
+	memset(packet, 0, 256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
 		packet->head.sub = BSCP_SUB_QSET;
 		bscp_protocol_forward_t *forward =
 				(bscp_protocol_forward_t*) (packet->data);
-//		forward->head.to = 0x03;
+		//		forward->head.to = 0x03;
 		forward->head.to = node_id;
 		forward->head.transport = PROTOCOL_TRANSPORT_RF;
 		bscp_protocol_packet_t *forwarded_packet =
 				(bscp_protocol_packet_t*) (forward->data);
-		forwarded_packet->head.size = sizeof(bscp_protocol_header_t)+ sizeof(uint32_t);
+		forwarded_packet->head.size = sizeof(bscp_protocol_header_t)
+						+ sizeof(uint32_t);
 		forwarded_packet->head.cmd = BSCP_CMD_UNIXTIME;
 		forwarded_packet->head.sub = BSCP_SUB_QSET;
 		*(uint32_t*) forwarded_packet->data = time(NULL);
@@ -325,26 +362,20 @@ int Device::setTime(int node_id) {
 				+ sizeof(bscp_protocol_forward_t)
 				+ sizeof(bscp_protocol_header_t) + sizeof(uint32_t);
 
-		libusb_transfer *t = libusb_alloc_transfer(0);
-		if (t) {
-			libusb_fill_bulk_transfer(t, this->m_usb_handle, 0x01,
-					(uint8_t*) packet, packet->head.size,
-					Device::libusb_transfer_cb, this, 50000);
-			return libusb_submit_transfer(t);
-		}
+		return enqueuePacket(packet);
 	}
 	return -1;
 }
 
 int Device::getData(int node_id) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
-	memset(packet,0, 256);
+	memset(packet, 0, 256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
 		packet->head.sub = BSCP_SUB_QSET;
 		bscp_protocol_forward_t *forward =
 				(bscp_protocol_forward_t*) (packet->data);
-//		forward->head.to = 0x03;
+		//		forward->head.to = 0x03;
 		forward->head.to = node_id;
 		forward->head.transport = PROTOCOL_TRANSPORT_RF;
 		bscp_protocol_packet_t *forwarded_packet =
@@ -356,13 +387,8 @@ int Device::getData(int node_id) {
 				+ sizeof(bscp_protocol_forward_t)
 				+ sizeof(bscp_protocol_header_t);
 
-		libusb_transfer *t = libusb_alloc_transfer(0);
-		if (t) {
-			libusb_fill_bulk_transfer(t, this->m_usb_handle, 0x01,
-					(uint8_t*) packet, packet->head.size,
-					Device::libusb_transfer_cb, this, 50000);
-			return libusb_submit_transfer(t);
-		}
+		return enqueuePacket(packet);
+
 	}
 	return -1;
 
@@ -371,13 +397,13 @@ int Device::getData(int node_id) {
 //--
 int Device::getInfo(int node_id) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
-	memset(packet,0, 256);
+	memset(packet, 0, 256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
 		packet->head.sub = BSCP_SUB_QSET;
 		bscp_protocol_forward_t *forward =
 				(bscp_protocol_forward_t*) (packet->data);
-//		forward->head.to = 0x03;
+		//		forward->head.to = 0x03;
 		forward->head.to = node_id;
 		forward->head.transport = PROTOCOL_TRANSPORT_RF;
 		bscp_protocol_packet_t *forwarded_packet =
@@ -389,13 +415,7 @@ int Device::getInfo(int node_id) {
 				+ sizeof(bscp_protocol_forward_t)
 				+ sizeof(bscp_protocol_header_t);
 
-		libusb_transfer *t = libusb_alloc_transfer(0);
-		if (t) {
-			libusb_fill_bulk_transfer(t, this->m_usb_handle, 0x01,
-					(uint8_t*) packet, packet->head.size,
-					Device::libusb_transfer_cb, this, 50000);
-			return libusb_submit_transfer(t);
-		}
+		return enqueuePacket(packet);
 	}
 	return -1;
 
@@ -404,13 +424,13 @@ int Device::getInfo(int node_id) {
 
 int Device::setSwitch(int node_id, bool onoff) {
 	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
-	memset(packet,0, 256);
+	memset(packet, 0, 256);
 	if (packet) {
 		packet->head.cmd = BSCP_CMD_FORWARD;
 		packet->head.sub = BSCP_SUB_QSET;
 		bscp_protocol_forward_t *forward =
 				(bscp_protocol_forward_t*) (packet->data);
-//		forward->head.to = 0x03;
+		//		forward->head.to = 0x03;
 		forward->head.to = node_id;
 		forward->head.transport = PROTOCOL_TRANSPORT_RF;
 		bscp_protocol_packet_t *forwarded_packet =
@@ -422,20 +442,17 @@ int Device::setSwitch(int node_id, bool onoff) {
 		packet->head.size = forwarded_packet->head.size
 				+ sizeof(bscp_protocol_forward_t)
 				+ sizeof(bscp_protocol_header_t);
+		return enqueuePacket(packet);
 
-		libusb_transfer *t = libusb_alloc_transfer(0);
-		if (t) {
-			libusb_fill_bulk_transfer(t, this->m_usb_handle, 0x01,
-					(uint8_t*) packet, packet->head.size,
-					Device::libusb_transfer_cb, this, 50000);
-			return libusb_submit_transfer(t);
-		}
 	}
 	return -1;
 
 	return 0;
 }
 
-int Device::enqueuePacket(bscp_protocol_packet_t*){
-	return -1;
+int Device::enqueuePacket(bscp_protocol_packet_t *packet) {
+	printf("Enqueuing Send Packet Size %3d, CMD%02X\n",packet->head.size, packet->head.cmd);
+	m_send_queue.push_back(packet);
+	m_send_queue_cv.notify_all();
+	return 0;
 }

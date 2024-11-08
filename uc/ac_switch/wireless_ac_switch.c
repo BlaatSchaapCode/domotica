@@ -458,8 +458,13 @@ int main() {
 	display_print_middle("Domotica");
 	display_apply();
 
-	rtc_init();
 	timer_init();
+	rtc_init();
+	// Testing how long it takes for the Crystalless device
+	printf("Time after rtc init %4d ms\n", get_time_ms());
+	// Force a delay
+	while (get_time_ms() < 3000);
+
 
 	sensors_init();
 

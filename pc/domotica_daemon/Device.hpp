@@ -24,6 +24,12 @@ extern "C" {
 
 #include "IDevice.hpp"
 
+extern "C" {
+// Internal library includes
+#include "protocol.h"
+#include "time_protocol.h"
+}
+
 class Device : public IDevice {
   public:
     Device(libusb_device_handle *handle);
@@ -60,6 +66,16 @@ class Device : public IDevice {
     std::mutex m_recv_queue_mutex = {};
     static void process_recv_queue_code(Device *mc);
 
+
+    bool m_send_queue_running = false;
+    std::thread m_send_queue_thread = {};
+    std::condition_variable m_send_queue_cv  = {};
+    std::mutex m_send_queue_mutex = {};
+    static void process_send_queue_code(Device *mc);
+
+
+
+
     struct libusb_transfer *m_transfer_in = nullptr;
     std::condition_variable m_transfer_cv = {};
     std::atomic<bool> m_transfer_pred = false;
@@ -69,6 +85,11 @@ class Device : public IDevice {
     static void LIBUSB_CALL libusb_transfer_cb(struct libusb_transfer *transfer);
 
     std::deque<std::vector<uint8_t>> m_recv_queue  = {};
+
+
+    std::deque<bscp_protocol_packet_t*> m_send_queue  = {};
+
+
 
 };
 

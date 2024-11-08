@@ -85,6 +85,9 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 	printf("Sensordata dongle %08X for unit %d sensor %d\n",
 			forward_data.dongle_id, unit_id, sens_id);
 
+	printf("\t\tID %02X, Type %02X, Value %4d\n",
+			sensordata->id, sensordata->type, sensordata->value);
+
 
 
 //	// Home assistant values
