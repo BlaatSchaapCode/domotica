@@ -280,49 +280,164 @@ std::string SensorManager::getUnitOfMeasurement(uint8_t sensor_flags) {
 
 void SensorManager::nodeInfoAddSensor(uint32_t dongle_id, uint8_t node_id,
 		uint8_t sensor_id, uint8_t sensor_flags) {
+//	char unique_id[256];
+//
+//	for (int sensor_flag = 0x01; sensor_flag < 0x100; sensor_flag <<= 1) {
+//		if (sensor_flag & sensor_flags) {
+//			snprintf(unique_id, sizeof(unique_id), "%08X_%02X_%02X_%02X",
+//					dongle_id, node_id, sensor_id, sensor_flag);
+//
+//			char value_template[256];
+//			snprintf(value_template, sizeof(value_template), "{{value_json.%s_%02x}}",
+//					getDeviceClass(sensor_flag).c_str(), sensor_id);
+//
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["platform"] =
+//					"sensor";
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["device_class"] = getDeviceClass(sensor_flag);
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["unit_of_measurement"] = getUnitOfMeasurement(sensor_flag);
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["value_template"] = value_template;
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["unique_id"] = unique_id;
+//		}
+//	}
+
+
+	nlohmann::json json;
+	char state_topic[256];
+	char command_topic[256];
+	char config_topic[256];
+	char identifiers[256];
 	char unique_id[256];
 
+	snprintf(state_topic, sizeof(state_topic),
+			"homeassistant/device/%08X/%02X/state", dongle_id, node_id);
+	snprintf(command_topic, sizeof(command_topic),
+			"homeassistant/device/%08X/%02X/command", dongle_id, node_id);
+	snprintf(config_topic, sizeof(config_topic),
+					"homeassistant/sensor/%08X/%02X/config", dongle_id, node_id);
+	snprintf(identifiers, sizeof(identifiers), "%08X_%02X", dongle_id, node_id);
+
+	json["state_topic"] = state_topic;
+	json["command_topic"] = command_topic;
+
+	json["origin"]["name"] = "BlaatSchaap Domotica";
+	json["origin"]["sw_version"] = "dev";
+	json["origin"]["url"] =	"https://www.blaatschaap.be";
+
+//	json["device"]	["configuration_url"];
+//	json["device"]	["connections"];
+	json["device"]	["identifiers"] = identifiers;
+	json["device"]	["name"] = "AC Switch";
+	json["device"]	["manufacturer"] = "BlaatSchaap";
+//	json["device"]	["model"];
+//	json["device"]	["model_id"];
+//	json["device"]	["hw_version"];
+//	json["device"]	["sw_version"];
+//	json["device"]	["suggested_area"];
+//	json["device"]	["serial_number"];
+
+	char value_template[256];
 	for (int sensor_flag = 0x01; sensor_flag < 0x100; sensor_flag <<= 1) {
 		if (sensor_flag & sensor_flags) {
 			snprintf(unique_id, sizeof(unique_id), "%08X_%02X_%02X_%02X",
 					dongle_id, node_id, sensor_id, sensor_flag);
 
-			char value_template[256];
 			snprintf(value_template, sizeof(value_template), "{{value_json.%s_%02x}}",
 					getDeviceClass(sensor_flag).c_str(), sensor_id);
 
-			mConfiguration[dongle_id][node_id]["components"][unique_id]["platform"] =
-					"sensor";
-			mConfiguration[dongle_id][node_id]["components"][unique_id]["device_class"] = getDeviceClass(sensor_flag);
-			mConfiguration[dongle_id][node_id]["components"][unique_id]["unit_of_measurement"] = getUnitOfMeasurement(sensor_flag);
-			mConfiguration[dongle_id][node_id]["components"][unique_id]["value_template"] = value_template;
-			mConfiguration[dongle_id][node_id]["components"][unique_id]["unique_id"] = unique_id;
+			json["device_class"] = getDeviceClass(sensor_flag);
+			json["unit_of_measurement"] = getUnitOfMeasurement(sensor_flag);
+			json["value_template"] = value_template;
+			json["unique_id"] = unique_id;
+
+			int mid;
+			std::string test_std = json.dump(4); // for debug
+			const char * test_cstr = test_std.c_str();
+			gp_mqtt->publish(&mid, config_topic, strlen(test_cstr),  (void*)test_cstr);
 		}
 	}
+
+
 }
 void SensorManager::nodeInfoAddSwitch(uint32_t dongle_id, uint8_t node_id,
 		uint8_t switch_id, uint8_t switch_flags) {
 
+//	char unique_id[256];
+//
+//	for (int switch_flag = 0x01; switch_flag < 0x100; switch_flag <<= 1) {
+//		if (switch_flag &  switch_flags) {
+//			snprintf(unique_id, sizeof(unique_id), "%08X_%02X_%02X_%02X",
+//					dongle_id, node_id, switch_id, switch_flag);
+//
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["device_class"] = "outlet";
+//
+//// TODO, Research value templated for this one
+////			mConfiguration[dongle_id][node_id]["components"][unique_id]["payload_on"] = 1;
+////			mConfiguration[dongle_id][node_id]["components"][unique_id]["payload_off"] = 0;
+////			mConfiguration[dongle_id][node_id]["components"][unique_id]["state_on"] = 1;
+////			mConfiguration[dongle_id][node_id]["components"][unique_id]["state_off"] = 0;
+//
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["platform"] = "switch";
+//
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["unique_id"] = unique_id;
+//		}
+//	}
+
+
+	nlohmann::json json;
+	char state_topic[256];
+	char command_topic[256];
+	char config_topic[256];
+	char identifiers[256];
 	char unique_id[256];
 
-	for (int switch_flag = 0x01; switch_flag < 0x100; switch_flag <<= 1) {
-		if (switch_flag &  switch_flags) {
-			snprintf(unique_id, sizeof(unique_id), "%08X_%02X_%02X_%02X",
-					dongle_id, node_id, switch_id, switch_flag);
+	snprintf(state_topic, sizeof(state_topic),
+			"homeassistant/device/%08X/%02X/state", dongle_id, node_id);
+	snprintf(command_topic, sizeof(command_topic),
+			"homeassistant/device/%08X/%02X/command", dongle_id, node_id);
+	snprintf(config_topic, sizeof(config_topic),
+					"homeassistant/switch/%08X/%02X/config", dongle_id, node_id);
+	snprintf(identifiers, sizeof(identifiers), "%08X_%02X", dongle_id, node_id);
 
-			mConfiguration[dongle_id][node_id]["components"][unique_id]["device_class"] = "outlet";
+	json["state_topic"] = state_topic;
+	json["command_topic"] = command_topic;
 
-// TODO, Research value templated for this one
-//			mConfiguration[dongle_id][node_id]["components"][unique_id]["payload_on"] = 1;
-//			mConfiguration[dongle_id][node_id]["components"][unique_id]["payload_off"] = 0;
-//			mConfiguration[dongle_id][node_id]["components"][unique_id]["state_on"] = 1;
-//			mConfiguration[dongle_id][node_id]["components"][unique_id]["state_off"] = 0;
+	json["origin"]["name"] = "BlaatSchaap Domotica";
+	json["origin"]["sw_version"] = "dev";
+	json["origin"]["url"] =	"https://www.blaatschaap.be";
 
-			mConfiguration[dongle_id][node_id]["components"][unique_id]["platform"] = "switch";
+//	json["device"]	["configuration_url"];
+//	json["device"]	["connections"];
+	json["device"]	["identifiers"] = identifiers;
+	json["device"]	["name"] = "AC Switch";
+	json["device"]	["manufacturer"] = "BlaatSchaap";
+//	json["device"]	["model"];
+//	json["device"]	["model_id"];
+//	json["device"]	["hw_version"];
+//	json["device"]	["sw_version"];
+//	json["device"]	["suggested_area"];
+//	json["device"]	["serial_number"];
 
-			mConfiguration[dongle_id][node_id]["components"][unique_id]["unique_id"] = unique_id;
-		}
-	}
+	char value_template[256];
+//	for (int sensor_flag = 0x01; sensor_flag < 0x100; sensor_flag <<= 1) {
+//		if (sensor_flag & sensor_flags) {
+//			snprintf(unique_id, sizeof(unique_id), "%08X_%02X_%02X_%02X",
+//					dongle_id, node_id, sensor_id, sensor_flag);
+
+//			snprintf(value_template, sizeof(value_template), "{{value_json.%s_%02x}}",
+//					getDeviceClass(sensor_flag).c_str(), sensor_id);
+
+			json["device_class"] = "outlet";
+//			json["unit_of_measurement"];
+//			json["value_template"];
+//			json["unique_id"];
+
+			int mid;
+			std::string test_std = json.dump(4); // for debug
+			const char * test_cstr = test_std.c_str();
+			gp_mqtt->publish(&mid, config_topic, strlen(test_cstr),  (void*)test_cstr);
+//		}
+//	}
+
 }
 
 
