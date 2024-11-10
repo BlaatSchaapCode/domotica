@@ -11,10 +11,14 @@
 
 #include <set>
 #include <mutex>
-
-#include <sqlite3.h>
+#include <map>
 
 #include <stdint.h>
+
+#include <sqlite3.h>
+#include <nlohmann/json.hpp>
+
+
 
 class SensorManager {
 public:
@@ -31,8 +35,13 @@ public:
 	void nodeInfoAddSwitch(uint32_t dongle_id, uint8_t node_id, uint8_t switch_id, uint8_t switch_flags);
 	void nodeInfoPublish(uint32_t dongle_id, uint8_t node_id);
 
+
+	std::string getDeviceClass(uint8_t sensor_flags);
+	std::string getUnitOfMeasurement(uint8_t sensor_flags);
+
 private:
 
+	std::map<uint32_t, std::map<uint8_t, nlohmann::json> > mConfiguration;
 	std::set<uint32_t> mDongles;
 	std::mutex mMutex;
 	static void sensorThread(SensorManager*);

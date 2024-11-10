@@ -10,8 +10,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-//--------------------
-// TODO make this neat
+#include "sensor_protocol.h"
+#include "mqtt.hpp"
+extern mqqt_test *gp_mqtt;
+
 #include <thread>
 
 #include "DeviceManager.hpp"
@@ -19,7 +21,21 @@
 extern DeviceManager *p_dm;
 void sensorDataThread(DeviceManager *dm, uint32_t dongle_id, uint8_t node_id,
 		unsigned int interval);
-//--------------------
+
+
+
+// It seems Domoticz does not support publishing the whole device at once
+// https://www.home-assistant.io/integrations/mqtt/#device-discovery-payload
+// where it shows publishing a whole device with components
+
+// For Domoticz we need to publish each component separately.
+// Potentially include the device with the same id???
+
+// But it has been tested with home assistant
+
+
+
+
 
 SensorManager::SensorManager() {
 	printf("Using SQLite3 version %s\n", sqlite3_libversion());
@@ -86,6 +102,9 @@ void SensorManager::sensorThread(SensorManager *_this) {
 								dongle_id, node_id, status);
 						auto d = p_dm->getDevice(dongle_id);
 						if (d) {
+
+							d->getInfo(node_id); // testint
+
 							d->getData(node_id);
 
 							// TODO update
@@ -178,6 +197,9 @@ void SensorManager::dongleArrived(uint32_t dongle_id) {
 				sqlite3_errmsg(mDb));
 	}
 
+
+
+
 }
 
 void SensorManager::dongleLeft(uint32_t dongle_id) {
@@ -187,16 +209,132 @@ void SensorManager::dongleLeft(uint32_t dongle_id) {
 }
 
 void SensorManager::nodeInfoReset(uint32_t dongle_id, uint8_t node_id) {
-	// TODO
+	mConfiguration[dongle_id][node_id].clear();
+
+	char state_topic[256];
+	char command_topic[256];
+
+
+	snprintf(state_topic, sizeof(state_topic),
+			"homeassistant/device/%08X/%02X/state", dongle_id, node_id);
+	snprintf(command_topic, sizeof(command_topic),
+			"homeassistant/device/%08X/%02X/command", dongle_id, node_id);
+
+	mConfiguration[dongle_id][node_id]["state_topic"] = state_topic;
+	mConfiguration[dongle_id][node_id]["command_topic"] = command_topic;
+
+	mConfiguration[dongle_id][node_id]["origin"]["name"] =
+			"BlaatSchaap Domotica";
+	mConfiguration[dongle_id][node_id]["origin"]["sw_version"] = "dev";
+	mConfiguration[dongle_id][node_id]["origin"]["url"] =
+			"https://www.blaatschaap.be";
+
+	char identifiers[256];
+	snprintf(identifiers, sizeof(identifiers), "%08X_%02X", dongle_id, node_id);
+
+//	mConfiguration[dongle_id][node_id]["device"]	["configuration_url"];
+//	mConfiguration[dongle_id][node_id]["device"]	["connections"];
+	mConfiguration[dongle_id][node_id]["device"]	["identifiers"] = identifiers;
+	mConfiguration[dongle_id][node_id]["device"]	["name"] = "AC Switch";
+	mConfiguration[dongle_id][node_id]["device"]	["manufacturer"] = "BlaatSchaap";
+//	mConfiguration[dongle_id][node_id]["device"]	["model"];
+//	mConfiguration[dongle_id][node_id]["device"]	["model_id"];
+//	mConfiguration[dongle_id][node_id]["device"]	["hw_version"];
+//	mConfiguration[dongle_id][node_id]["device"]	["sw_version"];
+//	mConfiguration[dongle_id][node_id]["device"]	["suggested_area"];
+//	mConfiguration[dongle_id][node_id]["device"]	["serial_number"];
+
+
+
+
+
+
+
 }
+
+std::string SensorManager::getDeviceClass(uint8_t sensor_flags) {
+
+	switch (sensor_flags) {
+	case (1 << bsprot_sensor_temperature):
+		return "temperature";
+
+	case (1 << bsprot_sensor_illuminance):
+		return "illuminance";
+	}
+	return "unknown";
+
+}
+std::string SensorManager::getUnitOfMeasurement(uint8_t sensor_flags) {
+	switch (sensor_flags) {
+	case (1 << bsprot_sensor_temperature):
+
+		return "°C";
+
+	case (1 << bsprot_sensor_illuminance):
+
+		return "lux";
+
+	}
+	return "unknown";
+}
+
 void SensorManager::nodeInfoAddSensor(uint32_t dongle_id, uint8_t node_id,
 		uint8_t sensor_id, uint8_t sensor_flags) {
-	// TODO
+	char unique_id[256];
+
+	for (int sensor_flag = 0x01; sensor_flag < 0x100; sensor_flag <<= 1) {
+		if (sensor_flag & sensor_flags) {
+			snprintf(unique_id, sizeof(unique_id), "%08X_%02X_%02X_%02X",
+					dongle_id, node_id, sensor_id, sensor_flag);
+
+			char value_template[256];
+			snprintf(value_template, sizeof(value_template), "{{value_json.%s_%02x}}",
+					getDeviceClass(sensor_flag).c_str(), sensor_id);
+
+			mConfiguration[dongle_id][node_id]["components"][unique_id]["platform"] =
+					"sensor";
+			mConfiguration[dongle_id][node_id]["components"][unique_id]["device_class"] = getDeviceClass(sensor_flag);
+			mConfiguration[dongle_id][node_id]["components"][unique_id]["unit_of_measurement"] = getUnitOfMeasurement(sensor_flag);
+			mConfiguration[dongle_id][node_id]["components"][unique_id]["value_template"] = value_template;
+			mConfiguration[dongle_id][node_id]["components"][unique_id]["unique_id"] = unique_id;
+		}
+	}
 }
 void SensorManager::nodeInfoAddSwitch(uint32_t dongle_id, uint8_t node_id,
 		uint8_t switch_id, uint8_t switch_flags) {
-	// TODO
+
+	char unique_id[256];
+
+	for (int switch_flag = 0x01; switch_flag < 0x100; switch_flag <<= 1) {
+		if (switch_flag &  switch_flags) {
+			snprintf(unique_id, sizeof(unique_id), "%08X_%02X_%02X_%02X",
+					dongle_id, node_id, switch_id, switch_flag);
+
+			mConfiguration[dongle_id][node_id]["components"][unique_id]["device_class"] = "outlet";
+
+// TODO, Research value templated for this one
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["payload_on"] = 1;
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["payload_off"] = 0;
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["state_on"] = 1;
+//			mConfiguration[dongle_id][node_id]["components"][unique_id]["state_off"] = 0;
+
+			mConfiguration[dongle_id][node_id]["components"][unique_id]["platform"] = "switch";
+
+			mConfiguration[dongle_id][node_id]["components"][unique_id]["unique_id"] = unique_id;
+		}
+	}
 }
+
+
 void SensorManager::nodeInfoPublish(uint32_t dongle_id, uint8_t node_id) {
 	// TODO
+	char config_topic[256];
+		snprintf(config_topic, sizeof(config_topic),
+				"homeassistant/device/%08X/%02X/config", dongle_id, node_id);
+// 		int publish(int *mid, const char *topic, int payloadlen=0, const void *payload=NULL, int qos=0, bool retain=false);
+		int mid;
+		std::string test_std = mConfiguration[dongle_id][node_id].dump(4); // for debug
+		const char * test_cstr = test_std.c_str();
+		gp_mqtt->publish(&mid, config_topic, strlen(test_cstr),  (void*)test_cstr);
+
 }

@@ -325,46 +325,47 @@ return BSCP_HANDLER_STATUS_OK_FW;
 bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 		protocol_transport_t transport,
 		void* param) {
-	bsprot_sensor_enviromental_data_t *sensordata =
-			(bsprot_sensor_enviromental_data_t *)packet->data;
-	printf("Sensor %2d ", sensordata->id);
-	switch (sensordata->type) {
-	case bsprot_sensor_enviromental_temperature:
-		printf("%16s %3d.%2d °C", "temperature",
-				sensordata->value.temperature_centi_celcius / 100,
-				abs(sensordata->value.temperature_centi_celcius) % 100);
-		break;
-	case bsprot_sensor_enviromental_humidity:
-		printf("%16s ", "humidity");
-
-		break;
-	case bsprot_sensor_enviromental_illuminance:
-		printf("%16s ", "illuminance");
-
-		break;
-	case bsprot_sensor_enviromental_airpressure:
-		printf("%16s ", "airpressure");
-		break;
-
-	case bsprot_sensor_enviromental_co2:
-		printf("%16s ", "co2");
-
-		break;
-	case bsprot_sensor_enviromental_eco2:
-		printf("%16s ", "eco2");
-
-		break;
-	case bsprot_sensor_enviromental_etvoc:
-		printf("%16s ", "etvoc");
-
-		break;
-	case bsprot_sensor_enviromental_pm25:
-
-		break;
-	default:
-		break;
-	}
-	putchar('\n');
+	// Why should the dongle even care?
+//	bsprot_sensor_enviromental_data_t *sensordata =
+//			(bsprot_sensor_enviromental_data_t *)packet->data;
+//	printf("Sensor %2d ", sensordata->id);
+//	switch (sensordata->type) {
+//	case bsprot_sensor_enviromental_temperature:
+//		printf("%16s %3d.%2d °C", "temperature",
+//				sensordata->value.temperature_centi_celcius / 100,
+//				abs(sensordata->value.temperature_centi_celcius) % 100);
+//		break;
+//	case bsprot_sensor_enviromental_humidity:
+//		printf("%16s ", "humidity");
+//
+//		break;
+//	case bsprot_sensor_enviromental_illuminance:
+//		printf("%16s ", "illuminance");
+//
+//		break;
+//	case bsprot_sensor_enviromental_airpressure:
+//		printf("%16s ", "airpressure");
+//		break;
+//
+//	case bsprot_sensor_enviromental_co2:
+//		printf("%16s ", "co2");
+//
+//		break;
+//	case bsprot_sensor_enviromental_eco2:
+//		printf("%16s ", "eco2");
+//
+//		break;
+//	case bsprot_sensor_enviromental_etvoc:
+//		printf("%16s ", "etvoc");
+//
+//		break;
+//	case bsprot_sensor_enviromental_pm25:
+//
+//		break;
+//	default:
+//		break;
+//	}
+//	putchar('\n');
 
 	return BSCP_HANDLER_STATUS_OK;
 }

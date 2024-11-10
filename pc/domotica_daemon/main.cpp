@@ -9,7 +9,7 @@
 
 static DeviceManager m_dm;
 DeviceManager *p_dm;
-static mqqt_test *mp_mqtt;
+mqqt_test *gp_mqtt;
 
 #include "sensordata.hpp"
 
@@ -64,7 +64,7 @@ bscp_handler_status_t switch_handler(bscp_protocol_packet_t *packet,
 	uint8_t state = (packet->data[0]);
 	printf("Dongle %08X Unit %d State %d\n", forward_data.dongle_id,
 			forward_data.transport.from, state);
-	mp_mqtt->publish_switch_value(forward_data.transport.from, state);
+	gp_mqtt->publish_switch_value(forward_data.transport.from, state);
 	// homeassistant/switch/unit_10/value
 	return BSCP_HANDLER_STATUS_OK;
 }
@@ -177,8 +177,12 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 bscp_handler_status_t info_handler(bscp_protocol_packet_t *data,
 		protocol_transport_t transport, void *param) {
 	puts("Received info");
+
+
 	forward_data_t forward_data = *(forward_data_t*) (param);
 	bscp_protocol_info_t *info = (bscp_protocol_info_t*) data->data;
+
+
 	int count = (data->head.size - sizeof(data->head))
 					/ sizeof(bscp_protocol_info_t);
 
@@ -233,11 +237,11 @@ bscp_handler_status_t info_handler_(bscp_protocol_packet_t *data,
 			default:
 				continue;
 			}
-			mp_mqtt->publish_sensor(forward_data.transport.from, info[i].index,
+			gp_mqtt->publish_sensor(forward_data.transport.from, info[i].index,
 					device_class, unit_of_measurement);
 			break;
 			case BSCP_CMD_SWITCH:
-				mp_mqtt->publish_switch(forward_data.transport.from, info[i].index);
+				gp_mqtt->publish_switch(forward_data.transport.from, info[i].index);
 				break;
 			default:
 				break;
@@ -257,14 +261,14 @@ int main(int argc, char *argv[]) {
 	protocol_register_command(switch_handler, BSCP_CMD_SWITCH);
 
 	mosqpp::lib_init();
-	mp_mqtt = new mqqt_test();
-	mp_mqtt->loop_start();
+	gp_mqtt = new mqqt_test();
+	gp_mqtt->loop_start();
 
 	int mid;
-	int result = mp_mqtt->connect("localhost", 1883);
+	int result = gp_mqtt->connect("localhost", 1883);
 	printf("mqtt connect returned %d\n", result);
 
-	//	mp_mqtt->connect_async("localhost", 1883);
+	//	gp_mqtt->connect_async("localhost", 1883);
 
 	m_dm.start();
 	p_dm = &m_dm;
