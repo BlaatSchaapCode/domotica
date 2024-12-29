@@ -114,6 +114,14 @@ void display_process(void) {
 			display_print_upper("  uit");
 		}
 
+		// time test
+		time_t current_time;
+		struct tm * time_info;
+		time(&current_time);
+		time_info = localtime(&current_time);
+		strftime(buff, sizeof(buff), "%H:%M:%S", time_info);
+		display_print_upper(buff);
+
 		extern uint16_t bh1750_illuminance_lux;
 		extern int16_t lm75b_temperature_centi_celcius;
 		extern int16_t ds18b20_temperature_centi_celcius;

@@ -77,10 +77,11 @@ class Device : public IDevice {
 
 
     struct libusb_transfer *m_transfer_in = nullptr;
-    std::condition_variable m_transfer_cv = {};
-    std::atomic<bool> m_transfer_pred = false;
     uint8_t m_recv_buffer[256]  = {};
+
+    std::atomic<bool> m_transfer_pred = false;
     std::mutex m_transfer_mutex  = {};
+    std::condition_variable m_transfer_cv = {};
 
     static void LIBUSB_CALL libusb_transfer_cb(struct libusb_transfer *transfer);
 
@@ -89,6 +90,20 @@ class Device : public IDevice {
 
     std::deque<bscp_protocol_packet_t*> m_send_queue  = {};
 
+
+    std::atomic<bool> m_local_response_pred = false;
+    std::mutex m_local_response_mutex  = {};
+    std::condition_variable m_local_response_cv = {};
+    uint8_t m_local_response_status = {};
+
+
+    std::atomic<bool> m_remote_response_pred = false;
+	std::mutex m_remote_response_mutex  = {};
+	std::condition_variable m_remote_response_cv = {};
+
+public:
+	void notify_local_response(uint8_t status);
+	void notify_remote_response();
 
 
 };

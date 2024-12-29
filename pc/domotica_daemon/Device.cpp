@@ -197,11 +197,13 @@ void Device::libusb_transfer_cb(struct libusb_transfer *xfr) {
 	case LIBUSB_TRANSFER_OVERFLOW:
 	case LIBUSB_TRANSFER_TIMED_OUT:
 
-		if (xfr->endpoint & 0x80) {
 
+
+		if (xfr->endpoint & 0x80) {
 			const char *msg =
 					(xfr->status == LIBUSB_TRANSFER_OVERFLOW) ?
 							"Overflow" : "Timeout";
+
 			int r;
 			std::unique_lock<std::mutex> transfer_lock(_this->m_transfer_mutex);
 			if (!_this->m_recv_queue_running)
@@ -215,6 +217,11 @@ void Device::libusb_transfer_cb(struct libusb_transfer *xfr) {
 						libusb_strerror((libusb_error) r));
 			}
 		} else {
+			const char *msg =
+					(xfr->status == LIBUSB_TRANSFER_OVERFLOW) ?
+							"Overflow" : "Timeout";
+			printf("Transmit %s\n", msg);
+
 			// Free buffer
 			free(xfr->buffer);
 			// Free xfr
@@ -295,6 +302,10 @@ void Device::process_send_queue_code(Device *dev) {
 
 			libusb_transfer *t = libusb_alloc_transfer(0);
 			if (t) {
+				dev->m_local_response_pred = false;
+				dev->m_local_response_status = -1;
+				dev->m_remote_response_pred = false;
+
 				libusb_fill_bulk_transfer(t, dev->m_usb_handle, 0x01,
 						(uint8_t*) packet, packet->head.size,
 						Device::libusb_transfer_cb, dev, 50000);
@@ -304,11 +315,45 @@ void Device::process_send_queue_code(Device *dev) {
 
 			dev->m_send_queue.pop_front();
 
-			// Fixed sleep for now.
-			// TODO: Wait for response, and if forwarding packet success
-			// wait for additional message.
-//			this_thread::sleep_for(500ms);
-			this_thread::sleep_for(1s);
+//			// Fixed sleep for now.
+//			// TODO: Wait for response, and if forwarding packet success
+//			// wait for additional message.
+//			// this_thread::sleep_for(500ms);
+//			this_thread::sleep_for(1s);
+
+
+			// TODO: find the forward handler and signal the condition variables
+			// used below, (initially without checked node ids)
+			// It is currenty in main.cpp outside of a class, as the protocol
+			// handler is currently C.
+			// Should I make a C++ variant of the handler to make this easier?
+
+			// Wait for the confirmation from the dongle (local confirmation)
+			// the message has been transmitted successfully
+			puts("Waiting for local confirmation");
+			if (true) {
+				unique_lock<mutex> lk(dev->m_local_response_mutex);
+				auto result = dev->m_local_response_cv.wait_for(lk, 1s, [dev] {
+				return dev->m_local_response_pred.load();
+			});
+			}
+			puts("Received local confirmation");
+
+			// If the message has been transmitted successfully, the node (remote)
+			// will send a response. Wait for that response here
+
+			if (!dev->m_local_response_status) {
+				puts("Waiting for remote confirmation");
+				unique_lock<mutex> lk(dev->m_remote_response_mutex);
+				auto result = dev->m_remote_response_cv.wait_for(lk, 1s, [dev] {
+					return dev->m_remote_response_pred.load();
+				});
+				puts("Received remote confirmation");
+			} else {
+				puts ("Local confirmation denotes error");
+			}
+
+
 		}
 	}
 }
@@ -455,4 +500,17 @@ int Device::enqueuePacket(bscp_protocol_packet_t *packet) {
 	m_send_queue.push_back(packet);
 	m_send_queue_cv.notify_all();
 	return 0;
+}
+
+void Device::notify_local_response(uint8_t status){
+	printf("Local Confirmation %02X\n", status);
+	m_local_response_status = status;
+	m_local_response_pred = true;
+	m_local_response_cv.notify_all();
+}
+
+void Device::notify_remote_response(){
+	puts("Remote Confirmation");
+	m_remote_response_pred = true;
+	m_remote_response_cv.notify_all();
 }

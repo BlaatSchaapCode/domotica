@@ -36,12 +36,20 @@ public:
 	void nodeInfoPublish(uint32_t dongle_id, uint8_t node_id);
 
 
+	void nodeValueReset(uint32_t dongle_id, uint8_t node_id);
+	void nodeValueAddSensor(uint32_t dongle_id, uint8_t node_id, uint8_t sensor_id, uint8_t sensor_flags, float value);
+	void nodeValueAddSwitch(uint32_t dongle_id, uint8_t node_id, uint8_t switch_id, uint8_t switch_flags, bool value);
+	void nodeValuePublish(uint32_t dongle_id, uint8_t node_id);
+
+
 	std::string getDeviceClass(uint8_t sensor_flags);
+	std::string getDeviceClass2(uint8_t sensor_flags);
 	std::string getUnitOfMeasurement(uint8_t sensor_flags);
 
 private:
 
 	std::map<uint32_t, std::map<uint8_t, nlohmann::json> > mConfiguration;
+	std::map<uint32_t, std::map<uint8_t, nlohmann::json> > mValue;
 	std::set<uint32_t> mDongles;
 	std::mutex mMutex;
 	static void sensorThread(SensorManager*);

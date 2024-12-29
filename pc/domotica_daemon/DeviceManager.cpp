@@ -135,6 +135,8 @@ void DeviceManager::libusb_hotplug_callback_thread_code(DeviceManager *dm) {
                 }
 
                 Device *device = new Device(handle);
+                device->setTime(7);
+
 
                 dm->addController(dynamic_cast<Device *>(device));
                 break;
