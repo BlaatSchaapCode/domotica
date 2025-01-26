@@ -7,7 +7,7 @@
 
  MIT License
 
- Copyright (c) 2017-2024 André van Schoubroeck <andre@blaatschaap.be>
+ Copyright (c) 2017-2025 André van Schoubroeck <andre@blaatschaap.be>
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -349,6 +349,8 @@ void Device::process_send_queue_code(Device *dev) {
 					return dev->m_remote_response_pred.load();
 				});
 				puts("Received remote confirmation");
+				// Sleep aftert remote conformation????
+//				this_thread::sleep_for(250ms);
 			} else {
 				puts ("Local confirmation denotes error");
 			}

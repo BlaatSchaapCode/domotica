@@ -12,6 +12,7 @@
 #include "protocol.h"
 #include "switch_protocol.h"
 #include "bsradio.h"
+#include "sensors.h"
 
 #include <bshal_gpio.h>
 
@@ -37,6 +38,7 @@ void light_switch_send(void) {
 void light_switch_set(bool value) {
 	bshal_gpio_write_pin(1, value);
 	light_switch_send();
+	sensors_send(); // debugging
 
 }
 bool light_switch_get(void) { return bshal_gpio_read_pin(1); }

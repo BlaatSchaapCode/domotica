@@ -99,7 +99,7 @@ void display_process(void) {
 		break;
 
 	}
-	display_print_large(buff);
+//	display_print_large(buff);
 	m_key = 0;
 
 	display_clear();

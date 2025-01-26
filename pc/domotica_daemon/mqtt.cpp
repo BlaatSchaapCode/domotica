@@ -31,7 +31,8 @@ mqqt_test::~mqqt_test() {
 void mqqt_test::on_connect(int rc) {
 	puts(__FUNCTION__);
 	int mid;
-	subscribe(&mid, "homeassistant/switch/+/set/#", 2);
+	// homeassistant/device/D0226E5D/06/command
+	subscribe(&mid, "homeassistant/device/+/+/command", 2);
 }
 
 void mqqt_test::on_connect_with_flags(int rc, int flags) {
@@ -57,18 +58,24 @@ void mqqt_test::on_message(const struct mosquitto_message *message) {
 		printf("Topic : %s \n" , message->topic);
 		printf("Payload : %s \n" , payload);
 
-		int node_id, switch_id;
-		if (2 == sscanf(message->topic, "homeassistant/switch/unit_%02X/set/%02X", &node_id, &switch_id)) {
+		// homeassistant/device/D0226E5D/06/command
+
+		int dongle_id, node_id;
+
+		int parsed_count = sscanf(message->topic, "homeassistant/device/%08X/%02X", &dongle_id, &node_id);
+		if (2 == parsed_count) {
 			int state;
 			sscanf(payload, "%d", &state);
-			// TODO, SensorManager to derive dongle id
-			//auto d = p_dm->getDevice(0x03025927);
-			auto d = p_dm->getDevice(0xD0226E5D);
-
+			auto d = p_dm->getDevice(dongle_id);
 			if (d) {
+				state = !strcmp("ON", payload);
 				d->setSwitch(node_id, state);
 			}
+		} else {
+			printf("Failed to parse topic, expect 2 values, got %d\n", parsed_count);
 		}
+	} else {
+		printf("Payload too large %d >= %d\n", message->payloadlen, 1024);
 	}
 }
 

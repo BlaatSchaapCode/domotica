@@ -39,6 +39,7 @@ bscp_handler_status_t forward_handler(bscp_protocol_packet_t *data,
 
 	case BSCP_SUB_QSET:
 
+		g_sm.nodeValueReset(forward_data.dongle_id,forward_data.transport.from);
 
 		protocol_parse(forwarded_data->data,
 				data->head.size - sizeof(protocol_transport_header_t),
@@ -46,6 +47,7 @@ bscp_handler_status_t forward_handler(bscp_protocol_packet_t *data,
 		if (device)
 			device->notify_remote_response();
 
+		g_sm.nodeValuePublish(forward_data.dongle_id,forward_data.transport.from);
 
 		return BSCP_HANDLER_STATUS_OK;
 	case BSCP_SUB_SSTA:
@@ -67,14 +69,17 @@ bscp_handler_status_t switch_handler(bscp_protocol_packet_t *packet,
 		protocol_transport_t transport, void *param) {
 
 	puts("Switch Handler");
-
+//
 	forward_data_t forward_data = *(forward_data_t*) (param);
+//
+	bool state = (packet->data[0]);
+//	printf("Dongle %08X Unit %d State %d\n", forward_data.dongle_id,
+//			forward_data.transport.from, state);
+//	gp_mqtt->publish_switch_value(forward_data.transport.from, state);
+//	// homeassistant/switch/unit_10/value
 
-	uint8_t state = (packet->data[0]);
-	printf("Dongle %08X Unit %d State %d\n", forward_data.dongle_id,
-			forward_data.transport.from, state);
-	gp_mqtt->publish_switch_value(forward_data.transport.from, state);
-	// homeassistant/switch/unit_10/value
+	g_sm.nodeValueAddSwitch(forward_data.dongle_id, forward_data.transport.from,
+			0, 0, state);
 	return BSCP_HANDLER_STATUS_OK;
 }
 
@@ -113,7 +118,7 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 		snprintf(value, sizeof(value), "%6.2f",
 				(float) (sensordata->value.temperature_centi_celcius) / 100.0f);
 		value_float = (float) (sensordata->value.temperature_centi_celcius)
-						/ 100.0f;
+				/ 100.0f;
 		break;
 	case bsprot_sensor_humidity:
 		device_class = "humidity";
@@ -121,7 +126,7 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 		snprintf(value, sizeof(value), "%6.1f",
 				(float) (sensordata->value.humidify_relative_promille) / 10.0f);
 		value_float = (float) (sensordata->value.humidify_relative_promille)
-						/ 10.0f;
+				/ 10.0f;
 		break;
 	case bsprot_sensor_illuminance:
 		device_class = "illuminance";
@@ -136,7 +141,7 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 		snprintf(value, sizeof(value), "%6.1f",
 				(float) (sensordata->value.air_pressure_deci_pascal) / 10.0f);
 		value_float = (float) (sensordata->value.air_pressure_deci_pascal)
-						/ 10.0f;
+				/ 10.0f;
 		break;
 	case bsprot_sensor_co2:
 		device_class = "carbon_dioxide";
@@ -165,8 +170,8 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 		break;
 	}
 
-
-	g_sm.nodeValueAddSensor(dongle_id, unit_id, sens_id, sensordata->type, value_float);
+	g_sm.nodeValueAddSensor(dongle_id, unit_id, sens_id, sensordata->type,
+			value_float);
 
 	//	mp_mqtt->publish_sensorvalue(unit_id, sens_id, device_class, value_float);
 //
@@ -192,11 +197,11 @@ bscp_handler_status_t info_handler(bscp_protocol_packet_t *data,
 		switch (info[i].cmd) {
 		case BSCP_CMD_SENSOR0_VALUE:
 			g_sm.nodeInfoAddSensor(forward_data.dongle_id,
-					forward_data.transport.from, i, info[i].flags);
+					forward_data.transport.from, info[i].index, info[i].flags);
 			break;
 		case BSCP_CMD_SWITCH:
 			g_sm.nodeInfoAddSwitch(forward_data.dongle_id,
-					forward_data.transport.from, i, info[i].flags);
+					forward_data.transport.from, info[i].index, info[i].flags);
 			break;
 		}
 	}

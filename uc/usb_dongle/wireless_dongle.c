@@ -55,6 +55,8 @@
 #include "timer.h"
 #include "usbd.h"
 
+//#define SNIFF
+
 static bshal_i2cm_instance_t m_i2c;
 bshal_i2cm_instance_t *gp_i2c = &m_i2c;
 bshal_spim_instance_t spi_flash_config;
@@ -171,7 +173,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 	i2c_eeprom_read(&i2c_eeprom_config, 0x14, rfconfig_buffer, 0x23);
 
 
-	if (header->size
+	if (false&&header->size
 					== sizeof(bscp_protocol_header_t)
 							+ sizeof(bsradio_rfconfig_t)) {
 		bsradio->rfconfig = *rfconfig;
@@ -197,22 +199,31 @@ int radio_init(bsradio_instance_t *bsradio) {
 		bsradio->rfconfig.modulation_shaping = 5; // 0.5 gfsk
 		bsradio->rfconfig.modulation = modulation_2fsk;
 
-		//		bsradio->rfconfig.birrate_bps = 12500;
-		//		bsradio->rfconfig.freq_dev_hz = 12500;
-		//		bsradio->rfconfig.bandwidth_hz = 25000;
+//		bsradio->rfconfig.birrate_bps = 12500;
+//		bsradio->rfconfig.freq_dev_hz = 12500;
+//		bsradio->rfconfig.bandwidth_hz = 25000;
 
 		//		We want to do higher speed in the future, but for now
 		//		Let's get the I²C EEPROM for the settings working first
-		bsradio->rfconfig.birrate_bps = 25000;
-		bsradio->rfconfig.freq_dev_hz = 25000;
-		bsradio->rfconfig.bandwidth_hz = 50000;
+//		bsradio->rfconfig.birrate_bps = 25000;
+//		bsradio->rfconfig.freq_dev_hz = 25000;
+////		bsradio->rfconfig.bandwidth_hz = 50000;
+//		bsradio->rfconfig.bandwidth_hz = 100000;
 
-		//		bsradio->rfconfig.birrate_bps = 50000;
-		//		bsradio->rfconfig.freq_dev_hz = 50000;
-		//		bsradio->rfconfig.bandwidth_hz = 100000;
+//			bsradio->rfconfig.birrate_bps = 25000;
+//			bsradio->rfconfig.freq_dev_hz = 50000;
+//	//		bsradio->rfconfig.bandwidth_hz = 50000;
+//			bsradio->rfconfig.bandwidth_hz = 100000;
+
+			bsradio->rfconfig.birrate_bps = 50000;
+			bsradio->rfconfig.freq_dev_hz = 50000;
+			bsradio->rfconfig.bandwidth_hz = 100000;
 
 		extern uint32_t get_serial(void);
 		(*(uint32_t *)bsradio->rfconfig.network_id) = get_serial();
+#ifdef SNIFF
+		(*(uint32_t *)bsradio->rfconfig.network_id) =0xD0226E5D; // override for sniffing
+#endif
 		bsradio->rfconfig.network_id_size = 4;
 		bsradio->rfconfig.node_id = 0;
 
@@ -373,8 +384,14 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
 int main() {
 	extern char* get_serial_string();
 	SEGGER_RTT_Init();
+#ifdef SNIFF
+	puts("Wireless Sniffer");
+#else
 	puts("Wireless Dongle");
+#endif
+
 	printf("Serial: %s\n", get_serial_string());
+
 
 	// New GCC versions are nit-picking.
 	// Put them here for now, make it neat later.
@@ -434,9 +451,28 @@ int main() {
 		memset(&request, 0, sizeof(request));
 
 		if (!bsradio_recv_packet(&m_radio, &request)) {
-			puts("Packet received");
-			printf("Length %2d, to: %02X, from: %02X rssi %3d\n", request.length,
-					request.to, request.from, request.rssi);
+			extern uint32_t get_time_ms();
+			printf("[%6d] ", get_time_ms());
+			if (request.ack_request) {
+				printf("request:   seq %3d try %3d len %2d, from: %02X, to  : %02X\n",
+									request.seq_nr,
+									request.retry_cnt,
+									request.length,
+									request.from,
+									request.to);
+			} else if (request.ack_response) {
+				printf("response:  seq %3d try %3d len %2d, to  : %02X, from: %02X\n\n",
+									request.seq_nr,
+									request.retry_cnt,
+									request.length,
+									request.to,
+									request.from);
+			} else {
+				puts("????");
+			}
+
+
+#ifndef SNIFF
 			if (request.ack_request) {
 				response = request;
 				response.length = 4;
@@ -446,7 +482,7 @@ int main() {
 				response.from = request.to;
 				bsradio_send_packet(&m_radio, &response);
 			}
-
+#endif
 			// protocol_parse(request.payload, request.length,PROTOCOL_TRANSPORT_RF,
 			// request.rssi);
 

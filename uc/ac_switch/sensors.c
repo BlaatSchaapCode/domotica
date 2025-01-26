@@ -169,7 +169,7 @@ void sensors_process(void) {
 
 
 			lm75b_ready = true;
-			printf("75: %4d\n",lm75b_temperature_centi_celcius);
+//			printf("75: %4d\n",lm75b_temperature_centi_celcius);
 		}
 
 		if (bh1750.addr) {
@@ -210,7 +210,7 @@ void sensors_process(void) {
 			ds18b20_temperature_celcius = temp;
 			ds18b20_temperature_centi_celcius = temp*100;
 			ds18b20_ready = true;
-			printf("20: %4d\n",ds18b20_temperature_centi_celcius);
+//			printf("20: %4d\n",ds18b20_temperature_centi_celcius);
 		}
 	}
 }

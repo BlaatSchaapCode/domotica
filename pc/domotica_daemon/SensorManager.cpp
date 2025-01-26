@@ -446,8 +446,8 @@ void SensorManager::nodeValueReset(uint32_t dongle_id, uint8_t node_id) {
 }
 void SensorManager::nodeValueAddSensor(uint32_t dongle_id, uint8_t node_id,
 		uint8_t sensor_id, uint8_t sensor_flags, float value) {
-	// temporary
-	nodeValueReset(dongle_id, node_id);
+//	// temporary
+//	nodeValueReset(dongle_id, node_id);
 
 	// "value_template": "{{value_json.temperature_03}}"
 	char buffer[128];
@@ -455,14 +455,14 @@ void SensorManager::nodeValueAddSensor(uint32_t dongle_id, uint8_t node_id,
 			getDeviceClass2(sensor_flags).c_str(), sensor_id);
 	mValue[dongle_id][node_id][buffer] = value;
 
-	// temporary
-	nodeValuePublish(dongle_id, node_id);
+//	// temporary
+//	nodeValuePublish(dongle_id, node_id);
 
 }
 void SensorManager::nodeValueAddSwitch(uint32_t dongle_id, uint8_t node_id,
 		uint8_t switch_id, uint8_t switch_flags, bool value) {
 	char buffer[128];
-	snprintf(buffer, sizeof(buffer), "%s_%02X", "switch", switch_id);
+	snprintf(buffer, sizeof(buffer), "%s_%02X", "outlet", switch_id);
 	mValue[dongle_id][node_id][buffer] = value;
 
 }

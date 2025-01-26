@@ -164,10 +164,8 @@ int radio_init(bsradio_instance_t *bsradio) {
 		hwconfig->frequency_band = 868;
 		hwconfig->tune = 0;
 		hwconfig->pa_config = 1;
-		hwconfig->antenna_type = -1;
+		hwconfig->antenna_type = antenna_type_trace;
 		hwconfig->xtal_freq = 32000000;
-
-		hwconfig->tune = -1;
 
 		bsradio->hwconfig = *hwconfig;
 
@@ -187,7 +185,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 			+ sizeof(bscp_protocol_header_t));
 	i2c_eeprom_read(&i2c_eeprom_config, 0x14, rfconfig_buffer, 0x23);
 
-	if (header->size
+	if (false&&header->size  // disabled for debug
 			== sizeof(bscp_protocol_header_t) + sizeof(bsradio_rfconfig_t)) {
 		bsradio->rfconfig = *rfconfig;
 		puts("rfconfig loaded");
@@ -212,27 +210,36 @@ int radio_init(bsradio_instance_t *bsradio) {
 		bsradio->rfconfig.modulation_shaping = 5; // 0.5 gfsk
 		bsradio->rfconfig.modulation = modulation_2fsk;
 
-		//		bsradio->rfconfig.birrate_bps = 12500;
-		//		bsradio->rfconfig.freq_dev_hz = 12500;
-		//		bsradio->rfconfig.bandwidth_hz = 25000;
+//		bsradio->rfconfig.birrate_bps = 12500;
+//		bsradio->rfconfig.freq_dev_hz = 12500;
+//		bsradio->rfconfig.bandwidth_hz = 25000;
 
 		//		We want to do higher speed in the future, but for now
 		//		Let's get the I²C EEPROM for the settings working first
-		bsradio->rfconfig.birrate_bps = 25000;
-		bsradio->rfconfig.freq_dev_hz = 25000;
-		bsradio->rfconfig.bandwidth_hz = 50000;
+//		bsradio->rfconfig.birrate_bps = 25000;
+//		bsradio->rfconfig.freq_dev_hz = 25000;
+//		//bsradio->rfconfig.bandwidth_hz = 50000;+
+//		bsradio->rfconfig.bandwidth_hz = 100000;
 
-		//		bsradio->rfconfig.birrate_bps = 50000;
-		//		bsradio->rfconfig.freq_dev_hz = 50000;
-		//		bsradio->rfconfig.bandwidth_hz = 100000;
+//		bsradio->rfconfig.birrate_bps = 25000;
+//		bsradio->rfconfig.freq_dev_hz = 50000;
+//		bsradio->rfconfig.bandwidth_hz = 100000;
+
+
+		bsradio->rfconfig.birrate_bps = 50000;
+		bsradio->rfconfig.freq_dev_hz = 50000;
+		bsradio->rfconfig.bandwidth_hz = 100000;
+
+
 
 //		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD32A6E04;
 		//(*(uint32_t*) bsradio->rfconfig.network_id) = 0x03025927;
-		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD0226E5D;
+//		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD0226E5D;
+		(*(uint32_t*) bsradio->rfconfig.network_id) = 0x03025926;
 
 		bsradio->rfconfig.network_id_size = 4;
 
-		bsradio->rfconfig.node_id = 0x10;
+		bsradio->rfconfig.node_id = 7;
 		bsradio->rfconfig.broadcast_id = 0xFF;
 
 		bool update_flash = false;
@@ -275,6 +282,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 	printf("Bitrate:        %6ld bps\n", bsradio->rfconfig.birrate_bps);
 	printf("Freq. dev.      %6ld Hz \n", bsradio->rfconfig.freq_dev_hz);
 	printf("Frequency       %6ld kHz\n", bsradio->rfconfig.frequency_kHz);
+	printf("Tune offset     %6ld kHz\n", bsradio->hwconfig.tune);
 	printf("Network id:     %08lX\n",
 			*(uint32_t*) (bsradio->rfconfig.network_id));
 	printf("Node id:        %d\n", bsradio->rfconfig.node_id);
@@ -335,9 +343,9 @@ bscp_handler_status_t pair_handler(bscp_protocol_packet_t *packet,
 	case BSCP_SUB_QSET:
 
 	{
-		pairing_t *pairing =(pairing_t *)(packet->data);
+		pairing_t *pairing = (pairing_t*) (packet->data);
 		m_radio.rfconfig.network_id_size = 4;
-		(*(uint32_t*)(m_radio.rfconfig.network_id))=pairing->network_id;
+		(*(uint32_t*) (m_radio.rfconfig.network_id)) = pairing->network_id;
 		m_radio.rfconfig.node_id = pairing->node_id;
 		m_radio.rfconfig.broadcast_id = 0xFF;
 
@@ -420,6 +428,108 @@ void calibrate_clock() {
 	printf("clock speed deviation: %ld\n", c);
 }
 
+void radio_process(void) {
+	bsradio_packet_t request = { }, response = { };
+
+	bool calibration = false;
+	if (calibration) {
+		int freq = 870000;
+		m_radio.hwconfig.tune = 0;
+		while (1) {
+
+			sxv1_set_mode_internal(&m_radio, sxv1_mode_standby);
+
+			// Calibration to fund the tune value, for SXv1 (RFM69)
+			// this is the frequency offset in kHz
+			(void) m_radio.hwconfig.tune;
+
+			sxv1_set_frequency(&m_radio, freq);
+
+			response.ack_request = 0;
+			response.ack_response = 1;
+			response.to = request.from;
+			response.from = request.to;
+			response.length = 4;
+
+			puts("Sending ACK");
+			bsradio_send_packet(&m_radio, &response);
+			bshal_delay_ms(1000);
+		}
+	}
+
+	if (!bsradio_recv_packet(&m_radio, &request)) {
+//			puts("Packet received");
+//			printf("Length %2d, to: %02X, from: %02X rssi %3d\n",
+//					request.length, request.to, request.from, request.rssi);
+//			bscp_protocol_packet_t *payload =
+//					(bscp_protocol_packet_t*) (request.payload);
+//			printf("\tSize %2d, cmd: %02X, sub: %02X, res: %02X\n",
+//					payload->head.size, payload->head.cmd, payload->head.sub,
+//					payload->head.res);
+
+		if (request.ack_request) {
+			printf(
+					"request:   seq %3d try %3d len %2d, from: %02X, to  : %02X\n",
+					request.seq_nr, request.retry_cnt, request.length,
+					request.from, request.to);
+		} else if (request.ack_response) {
+			printf(
+					"response:  seq %3d try %3d len %2d, to  : %02X, from: %02X\n",
+					request.seq_nr, request.retry_cnt, request.length,
+					request.to, request.from);
+		} else {
+			puts("????");
+		}
+
+		// This filter will be moved to bsradio later
+		// possible to hardware level if supported by radio.
+		if (request.to == m_radio.rfconfig.node_id) {
+			puts("Packet is for us");
+
+			if (request.ack_request) {
+				response = request;
+				response.ack_request = 0;
+				response.ack_response = 1;
+				response.to = request.from;
+				response.from = request.to;
+				response.length = 4;
+
+				puts("Sending ACK");
+				bsradio_send_packet(&m_radio, &response);
+
+				puts("Processing packet");
+				protocol_transport_header_t flags = { .from = request.from,
+						.to = request.to, .rssi = request.rssi, .transport =
+								PROTOCOL_TRANSPORT_RF };
+
+				bscp_protocol_packet_t *payload =
+						(bscp_protocol_packet_t*) (request.payload);
+				printf("\tSize %2d, cmd: %02X, sub: %02X, res: %02X\n",
+						payload->head.size, payload->head.cmd,
+						payload->head.sub, payload->head.res);
+
+				protocol_parse(request.payload, request.length,
+						PROTOCOL_TRANSPORT_RF, &flags);
+			}
+		} else {
+			puts("Packet is not for us");
+		}
+		memset(&request, 0, sizeof(request));
+		memset(&response, 0, sizeof(response));
+	}
+}
+
+void timekeeper(char* func) {
+	static uint32_t ts = 0;
+	if(ts) {
+		uint32_t time_taken = get_time_ms() - ts;
+		if (time_taken > 5)
+			printf("%16s took %6d ms\n", func, time_taken);
+	}
+	ts = get_time_ms();
+}
+
+
 int main() {
 	SEGGER_RTT_Init();
 
@@ -463,8 +573,8 @@ int main() {
 	// Testing how long it takes for the Crystalless device
 	printf("Time after rtc init %4d ms\n", get_time_ms());
 	// Force a delay
-	while (get_time_ms() < 3000);
-
+	while (get_time_ms() < 3000)
+		;
 
 	sensors_init();
 
@@ -482,77 +592,18 @@ int main() {
 
 	while (1) {
 
-		sensors_process();
-		buttons_process();
-		display_process();
-		ir_process();
+		// TODO: Reading temperature sensor block for ~680 ms
+		//       Updating display ~ 170 ms
+		// This interferes with radio processing, we miss packets
+		// Can we make those non-blocking and/or use interrupts for radio
 
-		bsradio_packet_t request = { }, response = { };
+		sensors_process();		timekeeper("sensors_process");
+		buttons_process();		timekeeper("buttons_process");
+		display_process();		timekeeper("display_process");
+		ir_process();			timekeeper("ir_process");
+		radio_process();		timekeeper("radio_process");
 
-		bool calibration = false;
-		if (calibration) {
 
-			m_radio.hwconfig.tune = 0;
-			while (1) {
-
-				sxv1_set_mode_internal(&m_radio, sxv1_mode_standby);
-
-				// Calibration to fund the tune value, for SXv1 (RFM69)
-				// this is the frequency offset in kHz
-				(void) m_radio.hwconfig.tune;
-
-				sxv1_set_frequency(&m_radio, 870000);
-
-				response.ack_request = 0;
-				response.ack_response = 1;
-				response.to = request.from;
-				response.from = request.to;
-				response.length = 4;
-
-				puts("Sending ACK");
-				bsradio_send_packet(&m_radio, &response);
-				bshal_delay_ms(1000);
-			}
-		}
-
-		if (!bsradio_recv_packet(&m_radio, &request)) {
-			puts("Packet received");
-			printf("Length %2d, to: %02X, from: %02X rssi %3d\n",
-					request.length, request.to, request.from, request.rssi);
-			bscp_protocol_packet_t *payload =
-					(bscp_protocol_packet_t*) (request.payload);
-			printf("\tSize %2d, cmd: %02X, sub: %02X, res: %02X\n",
-					payload->head.size, payload->head.cmd, payload->head.sub,
-					payload->head.res);
-
-			// This filter will be moved to bsradio later
-			// possible to hardware level if supported by radio.
-			if (request.to == m_radio.rfconfig.node_id) {
-				puts("Packet is for us");
-				if (request.ack_request) {
-					response = request;
-					response.ack_request = 0;
-					response.ack_response = 1;
-					response.to = request.from;
-					response.from = request.to;
-					response.length = 4;
-
-					puts("Sending ACK");
-					bsradio_send_packet(&m_radio, &response);
-
-					puts("Processing packet");
-					protocol_transport_header_t flags = { .from = request.from,
-							.to = request.to, .rssi = request.rssi, .transport =
-									PROTOCOL_TRANSPORT_RF };
-					protocol_parse(request.payload, request.length,
-							PROTOCOL_TRANSPORT_RF, &flags);
-				}
-			} else {
-				puts("Packet is not for us");
-			}
-			memset(&request, 0, sizeof(request));
-			memset(&response, 0, sizeof(response));
-		}
 	}
 }
 
