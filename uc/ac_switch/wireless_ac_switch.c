@@ -185,8 +185,8 @@ int radio_init(bsradio_instance_t *bsradio) {
 			+ sizeof(bscp_protocol_header_t));
 	i2c_eeprom_read(&i2c_eeprom_config, 0x14, rfconfig_buffer, 0x23);
 
-	if (false&&header->size  // disabled for debug
-			== sizeof(bscp_protocol_header_t) + sizeof(bsradio_rfconfig_t)) {
+	if (false && header->size  // disabled for debug
+	== sizeof(bscp_protocol_header_t) + sizeof(bsradio_rfconfig_t)) {
 		bsradio->rfconfig = *rfconfig;
 		puts("rfconfig loaded");
 	} else {
@@ -225,12 +225,9 @@ int radio_init(bsradio_instance_t *bsradio) {
 //		bsradio->rfconfig.freq_dev_hz = 50000;
 //		bsradio->rfconfig.bandwidth_hz = 100000;
 
-
 		bsradio->rfconfig.birrate_bps = 50000;
 		bsradio->rfconfig.freq_dev_hz = 50000;
 		bsradio->rfconfig.bandwidth_hz = 100000;
-
-
 
 //		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD32A6E04;
 		//(*(uint32_t*) bsradio->rfconfig.network_id) = 0x03025927;
@@ -428,9 +425,8 @@ void calibrate_clock() {
 	printf("clock speed deviation: %ld\n", c);
 }
 
-void radio_process(void) {
-	bsradio_packet_t request = { }, response = { };
-
+void radio_calibrate(void) {
+	bsradio_packet_t  response = { };
 	bool calibration = false;
 	if (calibration) {
 		int freq = 870000;
@@ -447,25 +443,20 @@ void radio_process(void) {
 
 			response.ack_request = 0;
 			response.ack_response = 1;
-			response.to = request.from;
-			response.from = request.to;
+			response.to = 0xFF;
+			response.from = 0xFF;
 			response.length = 4;
 
-			puts("Sending ACK");
+			puts("Sending Packet");
 			bsradio_send_packet(&m_radio, &response);
 			bshal_delay_ms(1000);
 		}
 	}
+}
+void radio_process(void) {
+	bsradio_packet_t request = { }, response = { };
 
 	if (!bsradio_recv_packet(&m_radio, &request)) {
-//			puts("Packet received");
-//			printf("Length %2d, to: %02X, from: %02X rssi %3d\n",
-//					request.length, request.to, request.from, request.rssi);
-//			bscp_protocol_packet_t *payload =
-//					(bscp_protocol_packet_t*) (request.payload);
-//			printf("\tSize %2d, cmd: %02X, sub: %02X, res: %02X\n",
-//					payload->head.size, payload->head.cmd, payload->head.sub,
-//					payload->head.res);
 
 		if (request.ack_request) {
 			printf(
@@ -519,9 +510,9 @@ void radio_process(void) {
 	}
 }
 
-void timekeeper(char* func) {
+void timekeeper(char *func) {
 	static uint32_t ts = 0;
-	if(ts) {
+	if (ts) {
 		uint32_t time_taken = get_time_ms() - ts;
 		if (time_taken > 5)
 			printf("%16s took %6d ms\n", func, time_taken);
@@ -529,6 +520,25 @@ void timekeeper(char* func) {
 	ts = get_time_ms();
 }
 
+void radio_irq_handler(void) {
+	puts("IRQ!!!");
+//	printf("IRQ PIN %d\n",bshal_gpio_read_pin(27));
+//	radio_process();
+}
+void radio_irq_init(void) {
+	GPIO_InitTypeDef GPIO_InitStructure;
+
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+
+	//GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING_FALLING;
+	GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
+	GPIO_InitStructure.Pull = GPIO_NOPULL;
+	GPIO_InitStructure.Pin = GPIO_PIN_11;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+}
 
 int main() {
 	SEGGER_RTT_Init();
@@ -580,6 +590,7 @@ int main() {
 
 	radio_init(&m_radio);
 	gp_radio = &m_radio;
+	radio_irq_init();
 	bsradio_set_mode(&m_radio, mode_receive);
 
 	protocol_register_command(sensordata_handler,
@@ -597,12 +608,11 @@ int main() {
 		// This interferes with radio processing, we miss packets
 		// Can we make those non-blocking and/or use interrupts for radio
 
-		sensors_process();		timekeeper("sensors_process");
-		buttons_process();		timekeeper("buttons_process");
-		display_process();		timekeeper("display_process");
-		ir_process();			timekeeper("ir_process");
-		radio_process();		timekeeper("radio_process");
-
+		sensors_process(); 	//timekeeper("sensors_process");
+		buttons_process(); 	//timekeeper("buttons_process");
+		display_process(); 	//timekeeper("display_process");
+		ir_process();   	//timekeeper("ir_process");
+		radio_process();	//timekeeper("radio_process");
 
 	}
 }

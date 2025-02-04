@@ -100,6 +100,6 @@ MK_DIR=$(UCDEV_ROOT)/build/make
 include $(MK_DIR)/all.mk
 
 ifeq ($(SUBARCH), M3)
-	LDFLAGS +=  -L$(UCDEV_ROOT)/build/staticlib/u8g2/debug/arm_m3  -lu8g2
-	LDFLAGS +=  -L$(UCDEV_ROOT)/build/staticlib/rtt/debug/arm_m3  -lrtt
+	LDFLAGS +=  -L$(UCDEV_ROOT)/build/staticlib/u8g2/release_speed/arm_m3  -lu8g2
+	LDFLAGS +=  -L$(UCDEV_ROOT)/build/staticlib/rtt/release_speed/arm_m3  -lrtt
 endif

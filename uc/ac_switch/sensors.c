@@ -181,11 +181,11 @@ void sensors_process(void) {
 
 		if (ds18b20.device_id) {
 			int result;
-			result = ds18x20_convert(&ds18b20);
-			if (result) {
-				puts("ds18x20_convert failed");
-				return;
-			}
+//			result = ds18x20_convert(&ds18b20);
+//			if (result) {
+//				puts("ds18x20_convert failed");
+//				return;
+//			}
 
 			/*
 			float temp;
@@ -211,6 +211,10 @@ void sensors_process(void) {
 			ds18b20_temperature_centi_celcius = temp*100;
 			ds18b20_ready = true;
 //			printf("20: %4d\n",ds18b20_temperature_centi_celcius);
+
+			result = ds18x20_convert(&ds18b20, false);
+
+
 		}
 	}
 }

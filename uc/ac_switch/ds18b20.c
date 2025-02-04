@@ -199,7 +199,7 @@ int ds18x20_scan_bus(ds18b20_t *ds18b20, size_t size) {
 	return entry;
 }
 
-int ds18x20_convert(ds18b20_t *ds18b20) {
+int ds18x20_convert(ds18b20_t *ds18b20, bool wait) {
 	int result;
 
 	result = ds18x20_reset(ONEWIRE_PIN);
@@ -216,6 +216,7 @@ int ds18x20_convert(ds18b20_t *ds18b20) {
 	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id >> 48);
 	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id >> 56);
 	result = ds18x20_write_byte(ONEWIRE_PIN, DS18B20_TEMPERATURE_CONVERT);
+	if (wait) {
 	bool readbit = 0;
 	int begin = get_time_us();
 	while (!readbit) {
@@ -224,8 +225,10 @@ int ds18x20_convert(ds18b20_t *ds18b20) {
 			return -1; // timeout
 		ds18x20_read_bit(ONEWIRE_PIN, &readbit);
 	}
+
 //	int end = get_time_us();
 //	printf("Conversion took %d ms\n",(end-begin)/1000);
+	}
 	return result;
 }
 
