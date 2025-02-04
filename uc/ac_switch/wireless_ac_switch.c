@@ -70,7 +70,7 @@
 #include "serial.h"
 #include "sxv1.h"
 
-#include "pair.h"
+#include "pair_protocol.h"
 
 #include <SEGGER_RTT.h>
 
@@ -119,6 +119,25 @@ void i2c_eeprom_init(void) {
 	i2c_eeprom_config.page_address_size = 1;
 }
 
+
+int radio_write_rfconfig(void) {
+	uint8_t rfconfig_buffer[0x23] = { };
+	bscp_protocol_header_t* header = (bscp_protocol_header_t*) (rfconfig_buffer);
+	bsradio_rfconfig_t *rfconfig = (bsradio_rfconfig_t*) (rfconfig_buffer
+			+ sizeof(bscp_protocol_header_t));
+
+	header->size = sizeof(bscp_protocol_header_t)
+			+ sizeof(bsradio_rfconfig_t);
+	header->cmd = 0x02;
+	header->sub = 0x20;
+	header->res = 'r';
+	*rfconfig = m_radio.rfconfig;
+
+	i2c_eeprom_program(&i2c_eeprom_config, 0x14, rfconfig_buffer, sizeof(rfconfig_buffer));
+	puts("Done");
+	return 0;
+
+}
 int radio_init(bsradio_instance_t *bsradio) {
 	i2c_eeprom_init();
 
@@ -185,7 +204,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 			+ sizeof(bscp_protocol_header_t));
 	i2c_eeprom_read(&i2c_eeprom_config, 0x14, rfconfig_buffer, 0x23);
 
-	if (false && header->size  // disabled for debug
+	if (header->size  // disabled for debug
 	== sizeof(bscp_protocol_header_t) + sizeof(bsradio_rfconfig_t)) {
 		bsradio->rfconfig = *rfconfig;
 		puts("rfconfig loaded");
@@ -242,15 +261,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 		bool update_flash = false;
 		//__BKPT(0);
 		if (update_flash) {
-			header->size = sizeof(bscp_protocol_header_t)
-					+ sizeof(bsradio_rfconfig_t);
-			header->cmd = 0x02;
-			header->sub = 0x20;
-			header->res = 'r';
-			*rfconfig = (bsradio->rfconfig);
-
-			i2c_eeprom_program(&i2c_eeprom_config, 0x14, rfconfig_buffer, 0x23);
-			puts("Done");
+			radio_write_rfconfig();
 		}
 	}
 
@@ -346,7 +357,6 @@ bscp_handler_status_t pair_handler(bscp_protocol_packet_t *packet,
 		m_radio.rfconfig.node_id = pairing->node_id;
 		m_radio.rfconfig.broadcast_id = 0xFF;
 
-		i2c_eeprom_program(&i2c_eeprom_config, 0x14, &m_radio.rfconfig, 0x23);
 		puts("Done");
 
 	}
@@ -474,7 +484,9 @@ void radio_process(void) {
 
 		// This filter will be moved to bsradio later
 		// possible to hardware level if supported by radio.
-		if (request.to == m_radio.rfconfig.node_id) {
+		if (request.to == m_radio.rfconfig.node_id
+				// 0xFE is pair mode. Quick and Dirty handling
+				|| request.to == 0xFE) {
 			puts("Packet is for us");
 
 			if (request.ack_request) {
@@ -626,7 +638,11 @@ uint8_t get_node_id(void) {
 }
 
 void enter_normal_mode(void) {
-	i2c_eeprom_program(&i2c_eeprom_config, 0x14, &(m_radio.rfconfig), 0x23);
+	radio_write_rfconfig();
+    bshal_gpio_write_pin(m_radio.spim.rs_pin, 1);
+    bshal_delay_ms(5);
+    bshal_gpio_write_pin(m_radio.spim.rs_pin, 0);
+    bshal_delay_ms(50);
 	bsradio_init(&m_radio);
 }
 
@@ -635,5 +651,9 @@ void enter_pair_mode(void) {
 	radio_pairmode = m_radio;
 	(*(uint32_t*) radio_pairmode.rfconfig.network_id) = 0xdeadbeef;
 	radio_pairmode.rfconfig.node_id = 0xFE;
+    bshal_gpio_write_pin(m_radio.spim.rs_pin, 1);
+    bshal_delay_ms(5);
+    bshal_gpio_write_pin(m_radio.spim.rs_pin, 0);
+    bshal_delay_ms(50);
 	bsradio_init(&radio_pairmode);
 }
