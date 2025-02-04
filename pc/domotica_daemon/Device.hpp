@@ -28,6 +28,7 @@ extern "C" {
 // Internal library includes
 #include "protocol.h"
 #include "time_protocol.h"
+#include "pair_protocol.h"
 }
 
 class Device : public IDevice {
@@ -43,6 +44,7 @@ class Device : public IDevice {
     int getData(int node_id);
     int setSwitch(int node_id, bool onoff);
     int getInfo(int node_id);
+    int pair(int node_id);
 
 
     int enqueuePacket(bscp_protocol_packet_t*);

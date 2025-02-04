@@ -197,8 +197,6 @@ void Device::libusb_transfer_cb(struct libusb_transfer *xfr) {
 	case LIBUSB_TRANSFER_OVERFLOW:
 	case LIBUSB_TRANSFER_TIMED_OUT:
 
-
-
 		if (xfr->endpoint & 0x80) {
 			const char *msg =
 					(xfr->status == LIBUSB_TRANSFER_OVERFLOW) ?
@@ -279,8 +277,6 @@ void Device::libusb_transfer_cb(struct libusb_transfer *xfr) {
 	}
 }
 
-
-
 void Device::process_send_queue_code(Device *dev) {
 	setThreadName(std::string((char*) dev->m_usb_string_serial) + "_send");
 
@@ -321,7 +317,6 @@ void Device::process_send_queue_code(Device *dev) {
 //			// this_thread::sleep_for(500ms);
 //			this_thread::sleep_for(1s);
 
-
 			// TODO: find the forward handler and signal the condition variables
 			// used below, (initially without checked node ids)
 			// It is currenty in main.cpp outside of a class, as the protocol
@@ -334,8 +329,8 @@ void Device::process_send_queue_code(Device *dev) {
 			if (true) {
 				unique_lock<mutex> lk(dev->m_local_response_mutex);
 				auto result = dev->m_local_response_cv.wait_for(lk, 1s, [dev] {
-				return dev->m_local_response_pred.load();
-			});
+					return dev->m_local_response_pred.load();
+				});
 			}
 			puts("Received local confirmation");
 
@@ -352,9 +347,8 @@ void Device::process_send_queue_code(Device *dev) {
 				// Sleep aftert remote conformation????
 //				this_thread::sleep_for(250ms);
 			} else {
-				puts ("Local confirmation denotes error");
+				puts("Local confirmation denotes error");
 			}
-
 
 		}
 	}
@@ -401,7 +395,7 @@ int Device::setTime(int node_id) {
 		bscp_protocol_packet_t *forwarded_packet =
 				(bscp_protocol_packet_t*) (forward->data);
 		forwarded_packet->head.size = sizeof(bscp_protocol_header_t)
-						+ sizeof(uint32_t);
+				+ sizeof(uint32_t);
 		forwarded_packet->head.cmd = BSCP_CMD_UNIXTIME;
 		forwarded_packet->head.sub = BSCP_SUB_QSET;
 		*(uint32_t*) forwarded_packet->data = time(NULL);
@@ -409,6 +403,22 @@ int Device::setTime(int node_id) {
 				+ sizeof(bscp_protocol_forward_t)
 				+ sizeof(bscp_protocol_header_t) + sizeof(uint32_t);
 
+		return enqueuePacket(packet);
+	}
+	return -1;
+}
+
+int Device::pair(int node_id) {
+	bscp_protocol_packet_t *packet = (bscp_protocol_packet_t*) malloc(256);
+	memset(packet, 0, 256);
+	if (packet) {
+		packet->head.cmd = BSCP_CMD_PAIR;
+		packet->head.sub = BSCP_SUB_QSET;
+		packet->head.size = sizeof(packet->head) + sizeof(pairing_t);
+		packet->head.res = 1;
+		pairing_t *pairing = (pairing_t*) (packet->data);
+		pairing->network_id = getSerial();
+		pairing->node_id = node_id;
 		return enqueuePacket(packet);
 	}
 	return -1;
@@ -498,20 +508,21 @@ int Device::setSwitch(int node_id, bool onoff) {
 }
 
 int Device::enqueuePacket(bscp_protocol_packet_t *packet) {
-	printf("Enqueuing Send Packet Size %3d, CMD%02X\n",packet->head.size, packet->head.cmd);
+	printf("Enqueuing Send Packet Size %3d, CMD%02X\n", packet->head.size,
+			packet->head.cmd);
 	m_send_queue.push_back(packet);
 	m_send_queue_cv.notify_all();
 	return 0;
 }
 
-void Device::notify_local_response(uint8_t status){
+void Device::notify_local_response(uint8_t status) {
 	printf("Local Confirmation %02X\n", status);
 	m_local_response_status = status;
 	m_local_response_pred = true;
 	m_local_response_cv.notify_all();
 }
 
-void Device::notify_remote_response(){
+void Device::notify_remote_response() {
 	puts("Remote Confirmation");
 	m_remote_response_pred = true;
 	m_remote_response_cv.notify_all();
