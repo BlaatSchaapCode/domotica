@@ -172,7 +172,10 @@ void rtc_init(void) {
 	/* RTC configured as follow:
 	 - Asynch Prediv  = Calculated automatically by HAL (based on LSI at 40kHz) */
 	RtcHandle.Instance = RTC;
-	RtcHandle.Init.AsynchPrediv = RTC_AUTO_1_SECOND;
+	if (crystal)
+		RtcHandle.Init.AsynchPrediv = RTC_AUTO_1_SECOND;
+	else
+		RtcHandle.Init.AsynchPrediv = 43333;
 
 	if (HAL_RTC_Init(&RtcHandle) != HAL_OK) {
 		/* Initialization Error */

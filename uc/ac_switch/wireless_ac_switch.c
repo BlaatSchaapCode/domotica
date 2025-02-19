@@ -208,6 +208,13 @@ int radio_init(bsradio_instance_t *bsradio) {
 	== sizeof(bscp_protocol_header_t) + sizeof(bsradio_rfconfig_t)) {
 		bsradio->rfconfig = *rfconfig;
 		puts("rfconfig loaded");
+
+		// Update settings in existing unit
+		bsradio->rfconfig.crc=CCITT_16;
+		bsradio->rfconfig.birrate_bps = 50000;
+		bsradio->rfconfig.freq_dev_hz = 50000;
+		bsradio->rfconfig.bandwidth_hz = 100000;
+
 	} else {
 		puts("rfconfig missing");
 
@@ -228,34 +235,15 @@ int radio_init(bsradio_instance_t *bsradio) {
 
 		bsradio->rfconfig.modulation_shaping = 5; // 0.5 gfsk
 		bsradio->rfconfig.modulation = modulation_2fsk;
-
-//		bsradio->rfconfig.birrate_bps = 12500;
-//		bsradio->rfconfig.freq_dev_hz = 12500;
-//		bsradio->rfconfig.bandwidth_hz = 25000;
-
-		//		We want to do higher speed in the future, but for now
-		//		Let's get the I²C EEPROM for the settings working first
-//		bsradio->rfconfig.birrate_bps = 25000;
-//		bsradio->rfconfig.freq_dev_hz = 25000;
-//		//bsradio->rfconfig.bandwidth_hz = 50000;+
-//		bsradio->rfconfig.bandwidth_hz = 100000;
-
-//		bsradio->rfconfig.birrate_bps = 25000;
-//		bsradio->rfconfig.freq_dev_hz = 50000;
-//		bsradio->rfconfig.bandwidth_hz = 100000;
+		bsradio->rfconfig.crc=CCITT_16;
 
 		bsradio->rfconfig.birrate_bps = 50000;
 		bsradio->rfconfig.freq_dev_hz = 50000;
 		bsradio->rfconfig.bandwidth_hz = 100000;
 
-//		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD32A6E04;
-		//(*(uint32_t*) bsradio->rfconfig.network_id) = 0x03025927;
-//		(*(uint32_t*) bsradio->rfconfig.network_id) = 0xD0226E5D;
-		(*(uint32_t*) bsradio->rfconfig.network_id) = 0x03025926;
-
 		bsradio->rfconfig.network_id_size = 4;
 
-		bsradio->rfconfig.node_id = 7;
+		bsradio->rfconfig.node_id = 0xF0;
 		bsradio->rfconfig.broadcast_id = 0xFF;
 
 		bool update_flash = false;
@@ -587,7 +575,9 @@ int main() {
 	display_init();
 
 	display_clear();
+
 	display_print_middle("Domotica");
+	display_print_lower ("  Rosi  ");
 	display_apply();
 
 	timer_init();

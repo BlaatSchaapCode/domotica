@@ -38,9 +38,9 @@ void light_switch_send(void) {
 void light_switch_set(bool value) {
 	bshal_gpio_write_pin(1, value);
 	light_switch_send();
-	sensors_send(); // debugging
-
+//	sensors_send(); // debugging
 }
+
 bool light_switch_get(void) { return bshal_gpio_read_pin(1); }
 bool button1_get(void) { return !bshal_gpio_read_pin(0); }
 bool button2_get(void) { return !bshal_gpio_read_pin(2); }

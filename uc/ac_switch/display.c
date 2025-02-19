@@ -115,12 +115,12 @@ void display_process(void) {
 		}
 
 		// time test
-		time_t current_time;
-		struct tm * time_info;
-		time(&current_time);
-		time_info = localtime(&current_time);
-		strftime(buff, sizeof(buff), "%H:%M:%S", time_info);
-		display_print_upper(buff);
+//		time_t current_time;
+//		struct tm * time_info;
+//		time(&current_time);
+//		time_info = localtime(&current_time);
+//		strftime(buff, sizeof(buff), "%H:%M:%S", time_info);
+//		display_print_upper(buff);
 
 		extern uint16_t bh1750_illuminance_lux;
 		extern int16_t lm75b_temperature_centi_celcius;

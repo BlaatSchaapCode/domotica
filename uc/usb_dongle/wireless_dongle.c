@@ -263,6 +263,8 @@ int radio_init(bsradio_instance_t *bsradio) {
   } else
     return -1;
 
+  bsradio->rfconfig.crc = CCITT_16;
+
   puts("Radio config");
   printf("Bandwidth:      %6d Hz\n", bsradio->rfconfig.bandwidth_hz);
   printf("Bitrate:        %6d bps\n", bsradio->rfconfig.birrate_bps);
