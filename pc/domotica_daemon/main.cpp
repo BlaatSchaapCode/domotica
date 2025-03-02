@@ -281,38 +281,6 @@ int main(int argc, char *argv[]) {
 
 	g_sm.begin();
 
-	//	bool time_synced = false;
-	//	while (1) {
-	//
-	//		std::this_thread::sleep_for(std::chrono::seconds(5));
-	//		d = m_dm.getDevice(0xD32A6E04);
-	//		if (d) {
-	////			puts("Getting info for 0x10");
-	////			 d->testForwardGetInfo(0x10);
-	//			d->setSwitch(0x10, false);
-	//			puts("Off");
-	//
-	//		}
-	//
-	//		std::this_thread::sleep_for(std::chrono::seconds(5));
-	//		d = m_dm.getDevice(0xD32A6E04);
-	//		if (d) {
-	//
-	////			puts("Getting data for 0x10");
-	////			 d->testForwardGetData(0x10);
-	//			d->setSwitch(0x10, true);
-	//			puts("On");
-	//		}
-	//
-	//
-	//	}
-
-	//	std::thread(sensorDataThread, &m_dm, 0x03025927, 0x03, 10).detach();
-	//	std::this_thread::sleep_for(std::chrono::seconds(1));
-	//	std::thread(sensorDataThread, &m_dm, 0xD32A6E04, 0x10, 10).detach();
-
-	//	std::thread(sensorDataThread, &m_dm, 0xD0226E5D, 0x06, 10).detach();
-
 	while (1)
 		sleep(1);
 
