@@ -503,100 +503,22 @@ void radio_irq_init(void) {
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
-char buffer[4096] = { }; // do we have enough ram
+char recvbuffer[2048] = { }; // do we have enough ram
+char procbuffer[2048] = { }; // do we have enough ram
+char donebuffer[2048] = { }; // do we have enough ram
+unsigned recvpos = 0;
+unsigned procpos = 0;
+bool synced = false;
 bool ready = false;
 
 meterstand_t meterstand = { };
 
 void dsmr_process() {
-// 1071 bytes?
-	bool ready = true;
-//	char buffer[] =
-//			"/ISk5\2MT382-1000\r\n"
-//			"1-3:0.2.8(50)\r\n"
-//			"0-0:1.0.0(101209113020W)\r\n"
-//			"0-0:96.1.1(4B384547303034303436333935353037)\r\n"
-//			"1-0:1.8.1(123456.789*kWh)\r\n"
-//			"1-0:1.8.2(123456.789*kWh)\r\n"
-//			"1-0:2.8.1(123456.789*kWh)\r\n"
-//			"1-0:2.8.2(123456.789*kWh)\r\n"
-//			"0-0:96.14.0(0002)\r\n"
-//			"1-0:1.7.0(01.193*kW)\r\n"
-//			"1-0:2.7.0(00.000*kW)\r\n"
-//			"0-0:96.7.21(00004)\r\n"
-//			"0-0:96.7.9(00002)\r\n"
-//			"1-0:99.97.0(2)(0-0:96.7.19)(101208152415W)(0000000240*s)(101208151004W)(0000000301*s)\r\n"
-//			"1-0:32.32.0(00002)\r\n"
-//			"1-0:52.32.0(00001)\r\n"
-//			"1-0:72.32.0(00000)\r\n"
-//			"1-0:32.36.0(00000)\r\n"
-//			"1-0:52.36.0(00003)\r\n"
-//			"1-0:72.36.0(00000)\r\n"
-//			"0-\r\n"
-//			"0:96.13.0(303132333435363738393A3B3C3D3E3F303132333435363738393A3B3C3D3E3F303132333435363738393A3B3C\r\n"
-//			"3D3E3F303132333435363738393A3B3C3D3E3F303132333435363738393A3B3C3D3E3F)\r\n"
-//			"1-0:32.7.0(220.1*V)\r\n"
-//			"1-0:52.7.0(220.2*V)\r\n"
-//			"1-0:72.7.0(220.3*V)\r\n"
-//			"1-0:31.7.0(001*A)\r\n"
-//			"1-0:51.7.0(002*A)\r\n"
-//			"1-0:71.7.0(003*A)\r\n"
-//			"1-0:21.7.0(01.111*kW)\r\n"
-//			"1-0:41.7.0(02.222*kW)\r\n"
-//			"1-0:61.7.0(03.333*kW)\r\n"
-//			"1-0:22.7.0(04.444*kW)\r\n"
-//			"1-0:42.7.0(05.555*kW)\r\n"
-//			"1-0:62.7.0(06.666*kW)\r\n"
-//			"0-1:24.1.0(003)\r\n"
-//			"0-1:96.1.0(3232323241424344313233343536373839)\r\n"
-//			"0-1:24.2.1(101209112500W)(12785.123*m3)\r\n"
-//			"!EF2F";
-//	char buffer[] =
-//			"1-3:0.2.8(42)\r\n"
-//					"0-0:1.0.0(231010165350S)\r\n"
-//					"0-0:96.1.1(4530303033303030303035383130313134)\r\n"
-//					"1-0:1.8.1(011550.656*kWh)\r\n"
-//					"1-0:1.8.2(009865.287*kWh)\r\n"
-//					"1-0:2.8.1(000005.892*kWh)\r\n"
-//					"1-0:2.8.2(000012.820*kWh)\r\n"
-//					"0-0:96.14.0(0002)\r\n"
-//					"1-0:1.7.0(00.073*kW)\r\n"
-//					"1-0:2.7.0(00.000*kW)\r\n"
-//					"0-0:96.7.21(00009)\r\n"
-//					"0-0:96.7.9(00006)\r\n"
-//					"1-0:99.97.0(3)(0-0:96.7.19)(211005044043S)(0000000666*s)(180617140348S)(0000000603*s)(000101000008W)(2147483647*s)\r\n"
-//					"1-0:32.32.0(00000)\r\n"
-//					"1-0:52.32.0(00000)\r\n"
-//					"1-0:72.32.0(00000)\r\n"
-//					"1-0:32.36.0(00000)\r\n"
-//					"1-0:52.36.0(00000)\r\n"
-//					"1-0:72.36.0(00000)\r\n"
-//					"0-0:96.13.1()\r\n"
-//					"0-0:96.13.0()\r\n"
-//					"1-0:31.7.0(000*A)\r\n"
-//					"1-0:51.7.0(000*A)\r\n"
-//					"1-0:71.7.0(000*A)\r\n"
-//					"1-0:21.7.0(00.039*kW)\r\n"
-//					"1-0:22.7.0(00.000*kW)\r\n"
-//					"1-0:41.7.0(00.020*kW)\r\n"
-//					"1-0:42.7.0(00.000*kW)\r\n"
-//					"1-0:61.7.0(00.015*kW)\r\n"
-//					"1-0:62.7.0(00.000*kW)\r\n"
-//					"0-1:24.1.0(003)\r\n"
-//					"0-1:96.1.0(4730303137353931323133333336383134)\r\n"
-//					"0-1:24.2.1(231010160000S)(09973.642*m3)\r\n"
-//					"!3B1D\r\n"
-//					"/KFM5KAIFA-METER";
-
-
-	//	char buffer[] =
-	size_t size = sizeof(buffer);
 	if (ready) {
-		meterstand = dsmr_parse(buffer, sizeof(buffer));
-		memset(buffer, 0, sizeof(buffer));
+		meterstand = dsmr_parse(donebuffer, strlen(donebuffer));
+		memset(donebuffer, 0, sizeof(donebuffer));
 		ready = false;
 	}
-
 
 }
 static UART_HandleTypeDef m_uart;
@@ -626,17 +548,15 @@ void uart_init() {
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-
 	// Data Request Line (Connected to CTS)
 	GPIO_InitStruct.Pin = GPIO_PIN_0;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, true);
 
-
 	HAL_UART_Init(handle);
 
-	HAL_UARTEx_ReceiveToIdle_IT(handle, buffer, sizeof(buffer));
+	HAL_UARTEx_ReceiveToIdle_IT(handle, recvbuffer, sizeof(recvbuffer));
 }
 
 void USART2_IRQHandler(void) {
@@ -644,10 +564,30 @@ void USART2_IRQHandler(void) {
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
-	ready = true;
+
 	UART_HandleTypeDef *handle = &m_uart;
 
-	HAL_UARTEx_ReceiveToIdle_IT(handle, buffer, sizeof(buffer));
+	char *sync = strstr(recvbuffer, "/");
+	if (sync) {
+		procpos = 0;
+		int inpos = sync - recvbuffer;
+		int remaining = ((int) Size - inpos);
+		if (remaining > 0) {
+			if (procbuffer[0]) {
+				memcpy(donebuffer, procbuffer, sizeof(donebuffer));
+				ready = true;
+			}
+			memset(procbuffer, 0, sizeof(procbuffer));
+			memcpy(procbuffer, recvbuffer + inpos, remaining);
+			procpos = remaining;
+		}
+	} else {
+		if ((procpos + Size) < sizeof(procbuffer)) {
+			memcpy(procbuffer + procpos, recvbuffer, Size);
+			procpos += Size;
+		}
+	}
+	HAL_UARTEx_ReceiveToIdle_IT(handle, recvbuffer, sizeof(recvbuffer));
 }
 
 int main() {
@@ -719,8 +659,8 @@ int main() {
 //		sensors_process(); 	//timekeeper("sensors_process");
 //		buttons_process(); 	//timekeeper("buttons_process");
 		display_process(); 	//timekeeper("display_process");
-		ir_process();   	//timekeeper("ir_process");
-		radio_process();	//timekeeper("radio_process");
+//		ir_process();   	//timekeeper("ir_process");
+//		radio_process();	//timekeeper("radio_process");
 
 	}
 }

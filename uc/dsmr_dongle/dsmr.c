@@ -5,7 +5,7 @@
  *      Author: andre
  */
 
-
+// TODO: Check receiving/delivering are they swapped?
 
 
 #include <stdio.h>
