@@ -567,16 +567,13 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
 
 	UART_HandleTypeDef *handle = &m_uart;
 
-	char *sync = strstr(recvbuffer, "/");
-	if (sync) {
+	char *begin = strstr(recvbuffer, "/");
+	char *end = strstr(recvbuffer, "!");
+	if (begin) {
 		procpos = 0;
-		int inpos = sync - recvbuffer;
+		int inpos = begin - recvbuffer;
 		int remaining = ((int) Size - inpos);
 		if (remaining > 0) {
-			if (procbuffer[0]) {
-				memcpy(donebuffer, procbuffer, sizeof(donebuffer));
-				ready = true;
-			}
 			memset(procbuffer, 0, sizeof(procbuffer));
 			memcpy(procbuffer, recvbuffer + inpos, remaining);
 			procpos = remaining;
@@ -586,10 +583,89 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
 			memcpy(procbuffer + procpos, recvbuffer, Size);
 			procpos += Size;
 		}
+		if (end) {
+			memcpy(donebuffer, procbuffer, sizeof(donebuffer));
+			ready = true;
+		}
 	}
 	HAL_UARTEx_ReceiveToIdle_IT(handle, recvbuffer, sizeof(recvbuffer));
 }
 
+void dsmr_test() {
+	char test[] =
+			"/XMX5LGBBFG1009089654\r\n"
+					"\r\n"
+					"1-3:0.2.8(42)\r\n"
+					"0-0:1.0.0(250302131650W)\r\n"
+					"0-0:96.1.1(4530303330303033313131383833393135)\r\n"
+					"1-0:1.8.1(008731.603*kWh)\r\n"
+					"1-0:1.8.2(007512.111*kWh)\r\n"
+					"1-0:2.8.1(000000.000*kWh)\r\n"
+					"1-0:2.8.2(000000.000*kWh)\r\n"
+					"0-0:96.14.0(0001)\r\n"
+					"1-0:1.7.0(00.238*kW)\r\n"
+					"1-0:2.7.0(00.000*kW)\r\n"
+					"0-0:96.7.21(00004)\r\n"
+					"0-0:96.7.9(00003)\r\n"
+					"1-0:99.97.0(3)(0-0:96.7.19)(240224223805W)(0000003993*s)(221230031046W)(0000000250*s)(180521110904S)(0000003882*s)\r\n"
+					"1-0:32.32.0(00001)\r\n"
+					"1-0:52.32.0(00000)\r\n"
+					"1-0:72.32.0(00000)\r\n"
+					"1-0:32.36.0(00001)\r\n"
+					"1-0:52.36.0(00001)\r\n"
+					"1-0:72.36.0(00001)\r\n"
+					"0-0:96.13.1()\r\n"
+					"0-0:96.13.0()\r\n"
+					"1-0:31.7.0(000*A)\r\n"
+					"1-0:51.7.0(001*A)\r\n"
+					"1-0:71.7.0(000*A)\r\n"
+					"1-0:21.7.0(00.033*kW)\r\n"
+					"1-0:41.7.0(00.205*kW)\r\n"
+					"1-0:61.7.0(00.000*kW)\r\n"
+					"1-0:22.7.0(00.000*kW)\r\n"
+					"1-0:42.7.0(00.000*kW)\r\n"
+					"1-0:62.7.0(00.000*kW)\r\n"
+					"!2CAD\r\n";
+
+//	char test[] = "/KFM5KAIFA-METER\r\n"
+//			"\r\n"
+//			"1-3:0.2.8(42)\r\n"
+//			"0-0:1.0.0(231010165231S)\r\n"
+//			"0-0:96.1.1(4530303033303030303035383130313134)\r\n"
+//			"1-0:1.8.1(011550.656*kWh)\r\n"
+//			"1-0:1.8.2(009865.285*kWh)\r\n"
+//			"1-0:2.8.1(000005.892*kWh)\r\n"
+//			"1-0:2.8.2(000012.820*kWh)\r\n"
+//			"0-0:96.14.0(0002)\r\n"
+//			"1-0:1.7.0(00.070*kW)\r\n"
+//			"1-0:2.7.0(00.000*kW)\r\n"
+//			"0-0:96.7.21(00009)\r\n"
+//			"0-0:96.7.9(00006)\r\n"
+//			"1-0:99.97.0(3)(0-0:96.7.19)(211005044043S)(0000000666*s)(180617140348S)(0000000603*s)(000101000008W)(2147483647*s)\r\n"
+//			"1-0:32.32.0(00000)\r\n"
+//			"1-0:52.32.0(00000)\r\n"
+//			"1-0:72.32.0(00000)\r\n"
+//			"1-0:32.36.0(00000)\r\n"
+//			"1-0:52.36.0(00000)\r\n"
+//			"1-0:72.36.0(00000)\r\n"
+//			"0-0:96.13.1()\r\n"
+//			"0-0:96.13.0()\r\n"
+//			"1-0:31.7.0(000*A)\r\n"
+//			"1-0:51.7.0(000*A)\r\n"
+//			"1-0:71.7.0(000*A)\r\n"
+//			"1-0:21.7.0(00.034*kW)\r\n"
+//			"1-0:22.7.0(00.000*kW)\r\n"
+//			"1-0:41.7.0(00.020*kW)\r\n"
+//			"1-0:42.7.0(00.000*kW)\r\n"
+//			"1-0:61.7.0(00.016*kW)\r\n"
+//			"1-0:62.7.0(00.000*kW)\r\n"
+//			"0-1:24.1.0(003)\r\n"
+//			"0-1:96.1.0(4730303137353931323133333336383134)\r\n"
+//			"0-1:24.2.1(231010160000S)(09973.642*m3)\r\n"
+//			"!B137\r\n";
+
+	meterstand = dsmr_parse(test, sizeof(test));
+}
 int main() {
 	SEGGER_RTT_Init();
 
@@ -649,7 +725,7 @@ int main() {
 
 	protocol_register_command(pair_handler, BSCP_CMD_PAIR);
 
-	// TODO: READ UART
+	dsmr_test();
 
 	uart_init();
 
