@@ -242,7 +242,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 
 		bsradio->rfconfig.network_id_size = 4;
 
-		bsradio->rfconfig.node_id = 0xF0;
+		bsradio->rfconfig.node_id = 0x25;
 		bsradio->rfconfig.broadcast_id = 0xFF;
 
 		bool update_flash = false;
@@ -660,7 +660,7 @@ int main() {
 //		buttons_process(); 	//timekeeper("buttons_process");
 		display_process(); 	//timekeeper("display_process");
 //		ir_process();   	//timekeeper("ir_process");
-//		radio_process();	//timekeeper("radio_process");
+		radio_process();	//timekeeper("radio_process");
 
 	}
 }

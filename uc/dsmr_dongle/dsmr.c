@@ -5,7 +5,6 @@
  *      Author: andre
  */
 
-// TODO: Check receiving/delivering are they swapped?
 
 
 #include <stdio.h>
@@ -20,17 +19,17 @@
 #define L2_CURRENT	"51.7.0"
 #define L3_CURRENT	"71.7.0"
 
-#define L1_POWER_DELIVERING	"21.7.0"
-#define L2_POWER_DELIVERING	"41.7.0"
-#define L3_POWER_DELIVERING	"61.7.0"
+#define L1_POWER_RECEIVING	"21.7.0"
+#define L2_POWER_RECEIVING	"41.7.0"
+#define L3_POWER_RECEIVING	"61.7.0"
 
-#define L1_POWER_RECEIVING	"22.7.0"
-#define L2_POWER_RECEIVING	"42.7.0"
-#define L3_POWER_RECEIVING	"62.7.0"
+#define L1_POWER_DELIVERING	"22.7.0"
+#define L2_POWER_DELIVERING	"42.7.0"
+#define L3_POWER_DELIVERING	"62.7.0"
 
-#define POWER_DELIVERED "1.7.0"
-#define POWER_RECEIVED "2.7.0"
 
+#define POWER_RECEIVED "1.7.0"
+#define POWER_DELIVERED "2.7.0"
 
 #define DATETIME	"1.0.0"
 
