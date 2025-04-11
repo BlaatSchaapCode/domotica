@@ -74,6 +74,11 @@
 
 #include <SEGGER_RTT.h>
 
+
+// for testing when we last received a packet
+time_t g_last_packet_time = 0;
+
+
 static bshal_i2cm_instance_t m_i2c;
 bshal_i2cm_instance_t *gp_i2c = NULL;
 // bshal_spim_instance_t spi_flash_config;
@@ -478,6 +483,10 @@ void radio_process(void) {
 			puts("Packet is for us");
 
 			if (request.ack_request) {
+
+				g_last_packet_time = time(NULL);
+
+
 				response = request;
 				response.ack_request = 0;
 				response.ack_response = 1;
@@ -577,7 +586,7 @@ int main() {
 	display_clear();
 
 	display_print_middle("Domotica");
-	display_print_lower ("  Rosi  ");
+	display_print_upper ("  Rosey ");
 	display_apply();
 
 	timer_init();

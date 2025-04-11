@@ -154,7 +154,7 @@ int mqqt_test::publish_switch_value(int node_id, bool value) {
            "homeassistant/switch/unit_%02x/value", node_id);
 
   int mid;
-  char val[] = {'0' + value};
+  char val[] = {(char)('0' + value)};
   int result = publish(&mid, state_topic, 1, val);
   return result;
 }

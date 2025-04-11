@@ -99,20 +99,22 @@ void SensorManager::sensorThread(SensorManager *_this) {
 
               d->getData(node_id);
 
+              sqlite3_stmt *stmt2;
               // TODO update
               const char *sqlUpdate =
                   "UPDATE nodes SET last_queried=unixepoch(), "
                   "last_seen=unixepoch() WHERE dongle_id=? AND node_id=?";
-              rc = sqlite3_prepare_v2(_this->mDb, sqlUpdate, -1, &res, 0);
+              rc = sqlite3_prepare_v2(_this->mDb, sqlUpdate, -1, &stmt2, 0);
 
               if (rc == SQLITE_OK) {
-                sqlite3_bind_int64(res, 1, dongle_id);
-                sqlite3_bind_int64(res, 2, node_id);
-                rc = sqlite3_step(res);
+                sqlite3_bind_int64(stmt2, 1, dongle_id);
+                sqlite3_bind_int64(stmt2, 2, node_id);
+                rc = sqlite3_step(stmt2);
 
                 if (rc == SQLITE_DONE) {
                   LOG_INFO("Node has been updated");
                 }
+                sqlite3_finalize(stmt2);
               } else {
                 LOG_ERROR("Failed to execute statement: %s",
                           sqlite3_errmsg(_this->mDb));
@@ -131,6 +133,7 @@ void SensorManager::sensorThread(SensorManager *_this) {
     }
   }
 }
+
 void SensorManager::dongleArrived(uint32_t dongle_id) {
   sqlite3_stmt *res;
   int rc;
@@ -146,7 +149,7 @@ void SensorManager::dongleArrived(uint32_t dongle_id) {
   int step = sqlite3_step(res);
 
   if (step == SQLITE_ROW) {
-    LOG_INFO("Dongle %8X has been found in the database ",
+    LOG_INFO("Dongle %08X has been found in the database ",
              sqlite3_column_int(res, 0));
     const std::lock_guard<std::mutex> lock(mMutex);
     mDongles.insert(dongle_id);
@@ -173,7 +176,6 @@ void SensorManager::dongleArrived(uint32_t dongle_id) {
 
     if (step == SQLITE_DONE) {
       LOG_INFO("Dongle Last Seen has been updated");
-
     } else {
       LOG_ERROR("Dongle Last Seen has *NOT* been updated");
     }
@@ -262,32 +264,6 @@ std::string SensorManager::getUnitOfMeasurement(uint8_t sensor_flags) {
 
 void SensorManager::nodeInfoAddSensor(uint32_t dongle_id, uint8_t node_id,
                                       uint8_t sensor_id, uint8_t sensor_flags) {
-  //	char unique_id[256];
-  //
-  //	for (int sensor_flag = 0x01; sensor_flag < 0x100; sensor_flag <<= 1) {
-  //		if (sensor_flag & sensor_flags) {
-  //			snprintf(unique_id, sizeof(unique_id),
-  //"%08X_%02X_%02X_%02X", 					dongle_id,
-  // node_id, sensor_id, sensor_flag);
-  //
-  //			char value_template[256];
-  //			snprintf(value_template, sizeof(value_template),
-  //"{{value_json.%s_%02x}}",
-  // getDeviceClass(sensor_flag).c_str(), sensor_id);
-  //
-  //			mConfiguration[dongle_id][node_id]["components"][unique_id]["platform"]
-  //= 					"sensor";
-  //			mConfiguration[dongle_id][node_id]["components"][unique_id]["device_class"]
-  //= getDeviceClass(sensor_flag);
-  //			mConfiguration[dongle_id][node_id]["components"][unique_id]["unit_of_measurement"]
-  //= getUnitOfMeasurement(sensor_flag);
-  //			mConfiguration[dongle_id][node_id]["components"][unique_id]["value_template"]
-  //= value_template;
-  //			mConfiguration[dongle_id][node_id]["components"][unique_id]["unique_id"]
-  //= unique_id;
-  //		}
-  //	}
-
   nlohmann::json json;
   char state_topic[256];
   char command_topic[256];
@@ -346,42 +322,12 @@ void SensorManager::nodeInfoAddSensor(uint32_t dongle_id, uint8_t node_id,
 }
 void SensorManager::nodeInfoAddSwitch(uint32_t dongle_id, uint8_t node_id,
                                       uint8_t switch_id, uint8_t switch_flags) {
-  //	char unique_id[256];
-  //
-  //	for (int switch_flag = 0x01; switch_flag < 0x100; switch_flag <<= 1) {
-  //		if (switch_flag &  switch_flags) {
-  //			snprintf(unique_id, sizeof(unique_id),
-  //"%08X_%02X_%02X_%02X", 					dongle_id,
-  // node_id, switch_id, switch_flag);
-  //
-  //			mConfiguration[dongle_id][node_id]["components"][unique_id]["device_class"]
-  //= "outlet";
-  //
-  //// TODO, Research value templated for this one
-  ////
-  /// mConfiguration[dongle_id][node_id]["components"][unique_id]["payload_on"]
-  /// = 1; /
-  /// mConfiguration[dongle_id][node_id]["components"][unique_id]["payload_off"]
-  ///= 0; /
-  /// mConfiguration[dongle_id][node_id]["components"][unique_id]["state_on"] =
-  /// 1; /
-  /// mConfiguration[dongle_id][node_id]["components"][unique_id]["state_off"] =
-  /// 0;
-  //
-  //			mConfiguration[dongle_id][node_id]["components"][unique_id]["platform"]
-  //= "switch";
-  //
-  //			mConfiguration[dongle_id][node_id]["components"][unique_id]["unique_id"]
-  //= unique_id;
-  //		}
-  //	}
-
   nlohmann::json json;
   char state_topic[256];
   char command_topic[256];
   char config_topic[256];
   char identifiers[256];
-  char unique_id[256];
+  //  char unique_id[256];
 
   snprintf(state_topic, sizeof(state_topic),
            "homeassistant/device/%08X/%02X/state", dongle_id, node_id);
@@ -426,36 +372,40 @@ void SensorManager::nodeInfoAddSwitch(uint32_t dongle_id, uint8_t node_id,
 
 void SensorManager::nodeInfoPublish(uint32_t dongle_id, uint8_t node_id) {
   //	// TODO
-  //	char config_topic[256];
-  //		snprintf(config_topic, sizeof(config_topic),
-  //				"homeassistant/device/%08X/%02X/config",
-  // dongle_id, node_id);
-  //// 		int publish(int *mid, const char *topic, int payloadlen=0, const
-  /// void *payload=NULL, int qos=0, bool retain=false);
-  //		int mid;
-  //		std::string test_std =
-  // mConfiguration[dongle_id][node_id].dump(4); // for debug 		const
-  // char * test_cstr = test_std.c_str(); 		gp_mqtt->publish(&mid,
-  // config_topic, strlen(test_cstr),  (void*)test_cstr);
 }
 
 void SensorManager::nodeValueReset(uint32_t dongle_id, uint8_t node_id) {
   mValue[dongle_id][node_id].clear();
 }
 void SensorManager::nodeValueAddSensor(uint32_t dongle_id, uint8_t node_id,
-                                       uint8_t sensor_id, uint8_t sensor_flags,
+                                       uint8_t sensor_id, uint8_t sensor_type,
                                        float value) {
-  //	// temporary
-  //	nodeValueReset(dongle_id, node_id);
-
-  // "value_template": "{{value_json.temperature_03}}"
   char buffer[128];
   snprintf(buffer, sizeof(buffer), "%s_%02X",
-           getDeviceClass2(sensor_flags).c_str(), sensor_id);
+           getDeviceClass2(sensor_type).c_str(), sensor_id);
   mValue[dongle_id][node_id][buffer] = value;
 
-  //	// temporary
-  //	nodeValuePublish(dongle_id, node_id);
+  sqlite3_stmt *res;
+  const char *sqlInsert =
+      "INSERT INTO `values` (dongle_id, node_id, sensor_id, sensor_type, "
+      "sensor_value, time)"
+      "values (?,?,?,?,?,?)";
+  auto rc = sqlite3_prepare_v2(mDb, sqlInsert, -1, &res, 0);
+  if (rc == SQLITE_OK) {
+    sqlite3_bind_int64(res, 1, dongle_id);
+    sqlite3_bind_int64(res, 2, node_id);
+    sqlite3_bind_int64(res, 3, sensor_id);
+    sqlite3_bind_int64(res, 4, sensor_type);
+    sqlite3_bind_double(res, 5, value);
+    sqlite3_bind_int64(res, 6, time(nullptr));
+  } else {
+    LOG_ERROR("Failed to execute statement: %s", sqlite3_errmsg(mDb));
+  }
+
+  rc = sqlite3_step(res);
+  sqlite3_finalize(res);
+  if (rc == SQLITE_DONE) {
+  }
 }
 void SensorManager::nodeValueAddSwitch(uint32_t dongle_id, uint8_t node_id,
                                        uint8_t switch_id, uint8_t switch_flags,
@@ -463,6 +413,8 @@ void SensorManager::nodeValueAddSwitch(uint32_t dongle_id, uint8_t node_id,
   char buffer[128];
   snprintf(buffer, sizeof(buffer), "%s_%02X", "outlet", switch_id);
   mValue[dongle_id][node_id][buffer] = value;
+
+  // TODO: Database
 }
 void SensorManager::nodeValuePublish(uint32_t dongle_id, uint8_t node_id) {
   // homeassistant/device/D0226E5D/06/state
@@ -476,4 +428,36 @@ void SensorManager::nodeValuePublish(uint32_t dongle_id, uint8_t node_id) {
   std::string test_std = mValue[dongle_id][node_id].dump(4);
   const char *test_cstr = test_std.c_str();
   gp_mqtt->publish(&mid, state_topic, strlen(test_cstr), (void *)test_cstr);
+}
+
+void SensorManager::dongleNodeCommunicationStatus(uint32_t dongle_id,
+                                                  uint8_t node_id,
+                                                  uint8_t status,
+                                                  uint8_t command) {
+  //----------
+  // Begin Logging dongle reponse to database
+  //----------
+  sqlite3_stmt *res;
+  const char *sqlInsert =
+      "INSERT INTO `status` (dongle_id, node_id, time, status, command)"
+      "values (?,?,?,?, ?)";
+  auto rc = sqlite3_prepare_v2(mDb, sqlInsert, -1, &res, 0);
+  if (rc == SQLITE_OK) {
+    sqlite3_bind_int64(res, 1, dongle_id);
+    sqlite3_bind_int64(res, 2, node_id);
+    sqlite3_bind_int64(res, 3, time(nullptr));
+    sqlite3_bind_int64(res, 4, status);
+    sqlite3_bind_int64(res, 5, command);
+
+  } else {
+    LOG_ERROR("Failed to execute statement: %s", sqlite3_errmsg(mDb));
+  }
+
+  rc = sqlite3_step(res);
+  sqlite3_finalize(res);
+  if (rc == SQLITE_DONE) {
+  }
+  //----------
+  // End Logging dongle reponse to database
+  //----------
 }

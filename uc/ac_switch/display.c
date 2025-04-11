@@ -12,6 +12,10 @@
 #include "light_switch.h"
 extern bsradio_instance_t *gp_radio;
 
+
+// for testing when we last received a packet
+extern time_t g_last_packet_time;
+
 static u8g2_t m_u8g2;
 extern bshal_i2cm_instance_t *gp_i2c;
 static char m_key;
@@ -108,11 +112,11 @@ void display_process(void) {
 	case 0:
 		return;
 	case 1:
-		if (light_status) {
-			display_print_upper("  aan");
-		} else {
-			display_print_upper("  uit");
-		}
+//		if (light_status) {
+//			display_print_upper("  aan");
+//		} else {
+//			display_print_upper("  uit");
+//		}
 
 		// time test
 //		time_t current_time;
@@ -121,6 +125,15 @@ void display_process(void) {
 //		time_info = localtime(&current_time);
 //		strftime(buff, sizeof(buff), "%H:%M:%S", time_info);
 //		display_print_upper(buff);
+
+		//--
+		// g_last_packet_time
+
+		snprintf(buff, sizeof(buff), "%6d s" , (int) (time(NULL) - g_last_packet_time));
+		display_print_upper(buff);
+		//--
+
+
 
 		extern uint16_t bh1750_illuminance_lux;
 		extern int16_t lm75b_temperature_centi_celcius;

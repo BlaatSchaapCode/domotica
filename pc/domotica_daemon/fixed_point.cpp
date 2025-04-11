@@ -46,20 +46,20 @@ fix operator+ (const float &lhs, const fix &rhs) {
 	return result;
 }
 
-int main(void) {
-	fix fi;
-	float fl;
-
-	fi = 6.5;
-	fl = fi;
-	fi = fl;
-	fi = fl + fi;
-	fi = fi + fl;
-
-	
-
-	printf("Test %f\n", fl);
-	printf("Sizeof fix is %d\n", sizeof(fix) );
-
-
-}
+//int main(void) {
+//	fix fi;
+//	float fl;
+//
+//	fi = 6.5;
+//	fl = fi;
+//	fi = fl;
+//	fi = fl + fi;
+//	fi = fi + fl;
+//
+//
+//
+//	printf("Test %f\n", fl);
+//	printf("Sizeof fix is %d\n", sizeof(fix) );
+//
+//
+//}

@@ -43,6 +43,7 @@ extern "C" {
 
 // External library includes
 #include <libusb.h>
+#include <sqlite3.h>
 
 // Project includes
 #include "SensorManager.hpp"
@@ -295,51 +296,68 @@ void Device::process_send_queue_code(Device *dev) {
         LOG_INFO("Result %d", result);
       }
 
+      //---------
+      // Begin Extract data from forwarded packet
+      //---------
+      int node_id = -1;
+      int cmd = -1;
+      if (packet->head.cmd == BSCP_CMD_FORWARD &&
+          packet->head.sub == BSCP_SUB_QSET) {
+        bscp_protocol_forward_t *forward =
+            (bscp_protocol_forward_t *)(packet->data);
+        node_id = forward->head.to;
+        bscp_protocol_packet_t *forwarded_packet =
+            (bscp_protocol_packet_t *)(forward->data);
+        cmd = forwarded_packet->head.cmd;
+      }
+      //---------
+      // End Extract data from forwarded packet
+      //---------
+
       dev->m_send_queue.pop_front();
 
-      //			// Fixed sleep for now.
-      //			// TODO: Wait for response, and if forwarding
-      // packet success
-      //			// wait for additional message.
-      //			// this_thread::sleep_for(500ms);
-      //			this_thread::sleep_for(1s);
-
-      // TODO: find the forward handler and signal the condition variables
-      // used below, (initially without checked node ids)
-      // It is currenty in main.cpp outside of a class, as the protocol
-      // handler is currently C.
-      // Should I make a C++ variant of the handler to make this easier?
-
-      // Wait for the confirmation from the dongle (local confirmation)
-      // the message has been transmitted successfully
-      LOG_INFO("Waiting for local confirmation");
-      if (true) {
-        unique_lock<mutex> lk(dev->m_local_response_mutex);
-        auto waitResult = dev->m_local_response_cv.wait_for(
-            lk, 1s, [dev] { return dev->m_local_response_pred.load(); });
-        if (waitResult == false) {
-          LOG_INFO("Received local confirmation");
-        } else {
-          LOG_INFO("Timeout waiting for local confirmation");
-        }
+      if (!t) {
+        //!!
+        return;
       }
 
-      // If the message has been transmitted successfully, the node (remote)
-      // will send a response. Wait for that response here
+      if (node_id != -1) {
+        // If it is a packet being forwarded...
 
-      if (!dev->m_local_response_status) {
-        LOG_INFO("Waiting for remote confirmation");
-        unique_lock<mutex> lk(dev->m_remote_response_mutex);
-        auto result = dev->m_remote_response_cv.wait_for(
-            lk, 1s, [dev] { return dev->m_remote_response_pred.load(); });
-        if (result == false) {
-          LOG_INFO("Received remote confirmation");
-        } else {
-          LOG_INFO("Timeout waiting for remote confirmation");
+        LOG_INFO("Waiting for local confirmation");
+        if (true) {
+          unique_lock<mutex> lk(dev->m_local_response_mutex);
+          auto waitResult = dev->m_local_response_cv.wait_for(
+              lk, 1s, [dev] { return dev->m_local_response_pred.load(); });
+          if (waitResult) {
+            LOG_INFO("Received local confirmation");
+          } else {
+            LOG_INFO("Timeout waiting for local confirmation");
+            dev->m_local_response_status = 0xF0;
+          }
         }
 
-      } else {
-        LOG_INFO("Local confirmation denotes error");
+        //-->>
+        g_sm.dongleNodeCommunicationStatus(dev->getSerial(), node_id,
+                                           dev->m_local_response_status, cmd);
+
+        // If the message has been transmitted successfully, the node (remote)
+        // will send a response. Wait for that response here
+
+        if (!dev->m_local_response_status) {
+          LOG_INFO("Waiting for remote confirmation");
+          unique_lock<mutex> lk(dev->m_remote_response_mutex);
+          auto waitResult = dev->m_remote_response_cv.wait_for(
+              lk, 1s, [dev] { return dev->m_remote_response_pred.load(); });
+          if (waitResult) {
+            LOG_INFO("Received remote confirmation");
+          } else {
+            LOG_INFO("Timeout waiting for remote confirmation");
+          }
+
+        } else {
+          LOG_INFO("Local confirmation denotes error");
+        }
       }
     }
   }

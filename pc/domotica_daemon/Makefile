@@ -15,6 +15,7 @@ CXX_SRC 	 += SensorManager.cpp
 CXX_SRC 	 += threadname.cpp
 CXX_SRC 	 += mqtt.cpp
 CXX_SRC 	 += sensordata.cpp
+CXX_SRC 	 += fix.cpp
 
 CXX_SRC 	 += utils/logger.cpp
 

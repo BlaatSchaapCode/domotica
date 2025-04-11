@@ -15,6 +15,8 @@ mqqt_test *gp_mqtt;
 
 #include "sensordata.hpp"
 
+#include "fix.hpp"
+
 SensorManager g_sm;
 
 extern "C" {
@@ -163,6 +165,9 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
     break;
   }
 
+  //  fix f;
+  //  f = value_float;
+  //  value_float = f;
   g_sm.nodeValueAddSensor(dongle_id, unit_id, sens_id, sensordata->type,
                           value_float);
 
