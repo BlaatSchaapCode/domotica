@@ -35,150 +35,160 @@
 
 #include "threadname.hpp"
 
+#include "utils/logger.hpp"
+
 DeviceManager *DeviceManager::dm = nullptr;
 
 // DeviceManager::DeviceManager() {
 void DeviceManager::start() {
-    auto version = libusb_get_version();
-    printf("Using libusb version %d.%d.%d.%d", version->major, version->minor, version->micro, version->nano);
-    if (version->rc) {
-        if (strlen(version->rc)) {
-            putchar('-');
-            puts(version->rc);
-        }
-    }
-    puts("\n");
-    printf("Initialising libusb\n");
+  auto version = libusb_get_version();
+  LOG_INFO("Using libusb version %d.%d.%d.%d", version->major, version->minor,
+           version->micro, version->nano);
+  //    if (version->rc) {
+  //        if (strlen(version->rc)) {
+  //            putchar('-');
+  //            puts(version->rc);
+  //        }
+  //    }
 
-    int res = libusb_init(&ctx);
+  LOG_INFO("Initialising libusb");
 
-    if (res != 0) {
-        fprintf(stderr, "Error initialising libusb.\n");
-        return;
-    }
+  int res = libusb_init(&ctx);
 
-    printf("Starting hotplug callback thread\n");
-    libusb_hotplug_callback_thread = thread(libusb_hotplug_callback_thread_code, this);
+  if (res != 0) {
+    LOG_ERROR("Error initialising libusb.");
+    return;
+  }
 
-    printf("Starting events thread\n");
-    libusb_handle_events_thread = thread(libusb_handle_events_thread_code, this);
+  LOG_INFO("Starting hotplug callback thread");
+  libusb_hotplug_callback_thread =
+      thread(libusb_hotplug_callback_thread_code, this);
 
-    printf("Registering hotplug callback\n");
+  LOG_INFO("Starting events thread");
+  libusb_handle_events_thread = thread(libusb_handle_events_thread_code, this);
 
-    DeviceManager::dm = this;
+  LOG_INFO("Registering hotplug callback");
 
-    // todo allow for registering devices with their pid vid
+  DeviceManager::dm = this;
 
-    res = libusb_hotplug_register_callback(
-        ctx, libusb_hotplug_event(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE,
-        0xDEAD, 0xBEEF, LIBUSB_HOTPLUG_MATCH_ANY, DeviceManager::libusb_hotplug_callback, this, &hotplug_handle);
+  // todo allow for registering devices with their pid vid
+
+  res = libusb_hotplug_register_callback(
+      ctx,
+      libusb_hotplug_event(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED |
+                           LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT),
+      LIBUSB_HOTPLUG_ENUMERATE, 0xDEAD, 0xBEEF, LIBUSB_HOTPLUG_MATCH_ANY,
+      DeviceManager::libusb_hotplug_callback, this, &hotplug_handle);
 }
 
 DeviceManager::~DeviceManager() {
 
-    printf("DeviceManager::~DeviceManager()\n");
+  LOG_INFO("DeviceManager::~DeviceManager()");
 
-    libusb_hotplug_deregister_callback(ctx, hotplug_handle);
+  libusb_hotplug_deregister_callback(ctx, hotplug_handle);
 
-    libusb_hotplug_callback_thread_running = false;
-    libusb_hotplug_callback_cv.notify_all();
-    if (libusb_hotplug_callback_thread.joinable())
-        libusb_hotplug_callback_thread.join();
+  libusb_hotplug_callback_thread_running = false;
+  libusb_hotplug_callback_cv.notify_all();
+  if (libusb_hotplug_callback_thread.joinable())
+    libusb_hotplug_callback_thread.join();
 
-    for (auto const &[libusb_dev, bscp_dev] : mapUsb2Device) {
-        delete bscp_dev;
-    }
+  for (auto const &[libusb_dev, bscp_dev] : mapUsb2Device) {
+    delete bscp_dev;
+  }
 
-    libusb_handle_events_thread_running = false;
-    if (libusb_handle_events_thread.joinable())
-        libusb_handle_events_thread.join();
+  libusb_handle_events_thread_running = false;
+  if (libusb_handle_events_thread.joinable())
+    libusb_handle_events_thread.join();
 
-    libusb_exit(ctx);
+  libusb_exit(ctx);
 }
 
 void DeviceManager::libusb_handle_events_thread_code(DeviceManager *dm) {
-    setThreadName("libusb_events");
+  setThreadName("libusb_events");
 
-    timeval tv;
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
+  timeval tv;
+  tv.tv_sec = 1;
+  tv.tv_usec = 0;
 
-    while (dm->libusb_handle_events_thread_running) {
-        libusb_handle_events_timeout_completed(dm->ctx, &tv, nullptr);
-    }
+  while (dm->libusb_handle_events_thread_running) {
+    libusb_handle_events_timeout_completed(dm->ctx, &tv, nullptr);
+  }
 }
 
 void DeviceManager::libusb_hotplug_callback_thread_code(DeviceManager *dm) {
-    setThreadName("libusb_hotplug");
-    while (dm->libusb_hotplug_callback_thread_running) {
-        unique_lock<mutex> lk(dm->libusb_hotplug_callback_mutex);
-        dm->libusb_hotplug_callback_cv.wait(lk);
-        if (!dm->libusb_hotplug_callback_thread_running)
-            return;
+  setThreadName("libusb_hotplug");
+  while (dm->libusb_hotplug_callback_thread_running) {
+    unique_lock<mutex> lk(dm->libusb_hotplug_callback_mutex);
+    dm->libusb_hotplug_callback_cv.wait(lk);
+    if (!dm->libusb_hotplug_callback_thread_running)
+      return;
 
-        while (!dm->libusb_hotplug_event_queue.empty()) {
-            if (!dm->libusb_hotplug_callback_thread_running)
-                return;
-            auto libusb_hotplug_callback_event = dm->libusb_hotplug_event_queue.front();
-            dm->libusb_hotplug_event_queue.pop();
+    while (!dm->libusb_hotplug_event_queue.empty()) {
+      if (!dm->libusb_hotplug_callback_thread_running)
+        return;
+      auto libusb_hotplug_callback_event =
+          dm->libusb_hotplug_event_queue.front();
+      dm->libusb_hotplug_event_queue.pop();
 
-            switch (libusb_hotplug_callback_event.event) {
-            case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-                puts("LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED");
-                libusb_device_handle *handle = NULL;
-                int retval = libusb_open(libusb_hotplug_callback_event.dev, &handle);
+      switch (libusb_hotplug_callback_event.event) {
+      case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
+        puts("LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED");
+        libusb_device_handle *handle = NULL;
+        int retval = libusb_open(libusb_hotplug_callback_event.dev, &handle);
 
-                if (retval) {
-                    printf("DeviceManager: Unable to open device: %s: %s\n", libusb_error_name(retval),
-                           libusb_strerror((libusb_error)retval));
-                    break;
-                }
-
-                Device *device = new Device(handle);
-//                device->setTime(5); //device->setTime(6); device->setTime(7);
-//                device->pair(5);
-
-//                device->pair(6);
-
-
-                dm->addController(dynamic_cast<Device *>(device));
-                break;
-            }
-            case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-            	puts("LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT");
-                auto controller = dm->mapUsb2Device[libusb_hotplug_callback_event.dev];
-                if (controller) {
-                    dm->eraseController(controller);
-                }
-                break;
-            }
-            default: {
-                printf("Unhandled event %d\n", libusb_hotplug_callback_event.event);
-            }
-            }
+        if (retval) {
+          printf("DeviceManager: Unable to open device: %s: %s\n",
+                 libusb_error_name(retval),
+                 libusb_strerror((libusb_error)retval));
+          break;
         }
+
+        Device *device = new Device(handle);
+        //                device->setTime(5); //device->setTime(6);
+        //                device->setTime(7); device->pair(5);
+
+        //                device->pair(6);
+
+        dm->addController(dynamic_cast<Device *>(device));
+        break;
+      }
+      case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
+        puts("LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT");
+        auto controller = dm->mapUsb2Device[libusb_hotplug_callback_event.dev];
+        if (controller) {
+          dm->eraseController(controller);
+        }
+        break;
+      }
+      default: {
+        printf("Unhandled event %d\n", libusb_hotplug_callback_event.event);
+      }
+      }
     }
+  }
 }
 
-int DeviceManager::libusb_hotplug_callback(struct libusb_context *ctx, struct libusb_device *dev, libusb_hotplug_event event,
+int DeviceManager::libusb_hotplug_callback(struct libusb_context *ctx,
+                                           struct libusb_device *dev,
+                                           libusb_hotplug_event event,
                                            void *user_data) {
-    DeviceManager *dm = (DeviceManager *)(user_data);
-    unique_lock<mutex> lk(dm->libusb_hotplug_callback_mutex);
-    dm->libusb_hotplug_event_queue.push({ctx, dev, event});
-    dm->libusb_hotplug_callback_cv.notify_all();
-    return 0;
+  DeviceManager *dm = (DeviceManager *)(user_data);
+  unique_lock<mutex> lk(dm->libusb_hotplug_callback_mutex);
+  dm->libusb_hotplug_event_queue.push({ctx, dev, event});
+  dm->libusb_hotplug_callback_cv.notify_all();
+  return 0;
 }
 
 void DeviceManager::addController(Device *device) {
-    auto serial = device->getSerial();
+  auto serial = device->getSerial();
 
-    mapSerial2Device[serial] = device;
-    mapUsb2Device[device->getLibUsbDevice()] = device;
+  mapSerial2Device[serial] = device;
+  mapUsb2Device[device->getLibUsbDevice()] = device;
 }
 
 void DeviceManager::eraseController(Device *device) {
-    mapSerial2Device.erase(device->getSerial());
-    mapUsb2Device.erase(device->getLibUsbDevice());
+  mapSerial2Device.erase(device->getSerial());
+  mapUsb2Device.erase(device->getLibUsbDevice());
 
-    delete device;
+  delete device;
 }
