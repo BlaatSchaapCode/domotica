@@ -18,6 +18,7 @@ CXX_SRC 	 += sensordata.cpp
 CXX_SRC 	 += fix.cpp
 
 CXX_SRC 	 += utils/logger.cpp
+CXX_SRC 	 += utils/time.cpp
 
 CXX_INCLUDES += $(UCDEV_ROOT)/lib/bsprot
 
