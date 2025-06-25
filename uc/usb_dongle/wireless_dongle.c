@@ -29,7 +29,9 @@
  */
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
+extern uint32_t get_time_ms();
 
 #include "system.h"
 
@@ -108,7 +110,7 @@ int radio_init(bsradio_instance_t *bsradio) {
   i2c_eeprom_init();
 
   bsradio->spim.frequency = 1000000;
-  bsradio->spim.bit_order = 0;  // MSB
+  bsradio->spim.bit_order = 0; // MSB
   bsradio->spim.mode = 0;
 
   bsradio->spim.hw_nr = 1;
@@ -179,21 +181,21 @@ int radio_init(bsradio_instance_t *bsradio) {
     puts("rfconfig missing");
 
     switch (bsradio->hwconfig.frequency_band) {
-      case 434:
-        bsradio->rfconfig.frequency_kHz = 434000;
-        bsradio->rfconfig.tx_power_dBm = 10;
-        break;
-      case 868:
-        bsradio->rfconfig.frequency_kHz = 869850;
-        bsradio->rfconfig.tx_power_dBm = 7;
-        break;
-      case 915:
-        bsradio->rfconfig.frequency_kHz = 915000;
-        bsradio->rfconfig.tx_power_dBm = -3;
-        break;
+    case 434:
+      bsradio->rfconfig.frequency_kHz = 434000;
+      bsradio->rfconfig.tx_power_dBm = 10;
+      break;
+    case 868:
+      bsradio->rfconfig.frequency_kHz = 869850;
+      bsradio->rfconfig.tx_power_dBm = 7;
+      break;
+    case 915:
+      bsradio->rfconfig.frequency_kHz = 915000;
+      bsradio->rfconfig.tx_power_dBm = -3;
+      break;
     }
 
-    bsradio->rfconfig.modulation_shaping = 5;  // 0.5 gfsk
+    bsradio->rfconfig.modulation_shaping = 5; // 0.5 gfsk
     bsradio->rfconfig.modulation = modulation_2fsk;
 
     //		bsradio->rfconfig.birrate_bps = 12500;
@@ -220,7 +222,7 @@ int radio_init(bsradio_instance_t *bsradio) {
     (*(uint32_t *)bsradio->rfconfig.network_id) = get_serial();
 #ifdef SNIFF
     (*(uint32_t *)bsradio->rfconfig.network_id) =
-        0xD0226E5D;  // override for sniffing
+        0xD0226E5D; // override for sniffing
 #endif
     bsradio->rfconfig.network_id_size = 4;
     bsradio->rfconfig.node_id = 0;
@@ -280,31 +282,32 @@ int radio_init(bsradio_instance_t *bsradio) {
   sxv1_read_reg(bsradio, SXV1_REG_VERSION, &chip_version);
 
   switch (chip_version) {
-    case 0x23:
-      puts("SX123x : OK");
-      break;
-    case 0x24:
-      puts("SX1231H: OK");
-      break;
-    default:
-      puts("SX123x : FAIL");
-      break;
+  case 0x23:
+    puts("SX123x : OK");
+    break;
+  case 0x24:
+    puts("SX1231H: OK");
+    break;
+  default:
+    puts("SX123x : FAIL");
+    break;
   }
 }
 
 void enter_normal_mode(void) {
-    bshal_gpio_write_pin(m_radio.spim.rs_pin, 1);
-    bshal_delay_ms(5);
-    bshal_gpio_write_pin(m_radio.spim.rs_pin, 0);
-    bshal_delay_ms(50);
+  bshal_gpio_write_pin(m_radio.spim.rs_pin, 1);
+  bshal_delay_ms(5);
+  bshal_gpio_write_pin(m_radio.spim.rs_pin, 0);
+  bshal_delay_ms(50);
 
-	bsradio_init(&m_radio); }
+  bsradio_init(&m_radio);
+}
 
 void enter_pair_mode(void) {
-    bshal_gpio_write_pin(m_radio.spim.rs_pin, 1);
-    bshal_delay_ms(5);
-    bshal_gpio_write_pin(m_radio.spim.rs_pin, 0);
-    bshal_delay_ms(50);
+  bshal_gpio_write_pin(m_radio.spim.rs_pin, 1);
+  bshal_delay_ms(5);
+  bshal_gpio_write_pin(m_radio.spim.rs_pin, 0);
+  bshal_delay_ms(50);
 
   static bsradio_instance_t radio_pairmode;
   radio_pairmode = m_radio;
@@ -327,7 +330,8 @@ bscp_handler_status_t pair_handler(bscp_protocol_packet_t *packet,
     request.from = 0x00;
     int result = bsradio_send_request(&m_radio, &request, &response);
     enter_normal_mode();
-    if (result) return result;
+    if (result)
+      return result;
     return ((bscp_protocol_packet_t *)response.payload)->head.res;
   }
   return BSCP_HANDLER_STATUS_ERROR;
@@ -340,34 +344,34 @@ bscp_handler_status_t forward_handler(bscp_protocol_packet_t *packet,
 
   if (packet->head.sub == BSCP_SUB_QSET) {
     switch (forward->head.transport) {
-      case PROTOCOL_TRANSPORT_RF:
-        bsradio_packet_t request = {}, response = {};
-        request.from = 0x00;
-        request.to = forward->head.to;
-        request.length = packet->head.size - sizeof(packet->head);
+    case PROTOCOL_TRANSPORT_RF:
+      bsradio_packet_t request = {}, response = {};
+      request.from = 0x00;
+      request.to = forward->head.to;
+      request.length = packet->head.size - sizeof(packet->head);
 #pragma pack(push, 1)
-        memcpy(request.payload, forward->data,
-               packet->head.size - sizeof(packet->head));
-        int result = bsradio_send_request(&m_radio, &request, &response);
-        if (transport == PROTOCOL_TRANSPORT_USB) {
-          static bscp_protocol_packet_t usb_response;
-          bscp_protocol_forward_t *forward_response =
-              (bscp_protocol_forward_t *)(usb_response.data);
-          forward_response->head = forward->head;
-          usb_response.head = packet->head;
-          usb_response.head.size =
-              sizeof(forward->head) + sizeof(usb_response.head);
-          usb_response.head.res = result;
-          usb_response.head.sub = BSCP_SUB_SSTA;
-          bscp_usbd_transmit(gp_usbd, 0x81, &usb_response,
-                             usb_response.head.size);
-        }
+      memcpy(request.payload, forward->data,
+             packet->head.size - sizeof(packet->head));
+      int result = bsradio_send_request(&m_radio, &request, &response);
+      if (transport == PROTOCOL_TRANSPORT_USB) {
+        static bscp_protocol_packet_t usb_response;
+        bscp_protocol_forward_t *forward_response =
+            (bscp_protocol_forward_t *)(usb_response.data);
+        forward_response->head = forward->head;
+        usb_response.head = packet->head;
+        usb_response.head.size =
+            sizeof(forward->head) + sizeof(usb_response.head);
+        usb_response.head.res = result;
+        usb_response.head.sub = BSCP_SUB_SSTA;
+        bscp_usbd_transmit(gp_usbd, 0x81, &usb_response,
+                           usb_response.head.size);
+      }
 
 #pragma pack(pop)
 
-        return BSCP_HANDLER_STATUS_OK_FW;
-      default:
-        return BSCP_HANDLER_STATUS_BADDATA;
+      return BSCP_HANDLER_STATUS_OK_FW;
+    default:
+      return BSCP_HANDLER_STATUS_BADDATA;
     }
   }
   return BSCP_HANDLER_STATUS_ERROR;
@@ -398,6 +402,13 @@ void calibration(void) {
       bshal_delay_ms(1000);
     }
   }
+}
+
+void ping(void) {
+  static bscp_protocol_header_t ping = {4, BSCP_CMD_PING, BSCP_SUB_QSET, 0};
+  ping.res++;
+  bscp_usbd_transmit(gp_usbd, 0x81, &ping, ping.size);
+  puts("ping");
 }
 
 int main() {
@@ -436,11 +447,22 @@ int main() {
   while (1) {
     usbd_process();
 
+    static uint32_t next_ping = 30000;
+    int difference = next_ping - get_time_ms();
+    if (difference > 30000) {
+      next_ping = 0;
+      puts("EEPS!!!!");
+    }
+
+    if (get_time_ms() > next_ping) {
+      next_ping = get_time_ms() + 1000;
+      ping();
+    }
+
     bsradio_packet_t request = {}, response = {};
     memset(&request, 0, sizeof(request));
 
     if (!bsradio_recv_packet(&m_radio, &request)) {
-      extern uint32_t get_time_ms();
       printf("[%6d] ", get_time_ms());
       if (request.ack_request) {
         printf("request:   seq %3d try %3d len %2d, from: %02X, to  : %02X\n",
