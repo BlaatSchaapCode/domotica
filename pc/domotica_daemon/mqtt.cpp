@@ -87,6 +87,8 @@ int mqqt_test::publish_sensor(int node_id, int sens_id,
                               const char *device_class,
                               const char *unit_of_measurement) {
 
+  LOG_INFO(__FUNCTION__);
+
   char config_topic[256];
   char state_topic[256];
   nlohmann::json json_config;
@@ -126,6 +128,9 @@ int mqqt_test::publish_sensor(int node_id, int sens_id,
 
 int mqqt_test::publish_sensorvalue(int node_id, int sens_id,
                                    const char *device_class, float value) {
+
+  LOG_INFO(__FUNCTION__);
+
   char state_topic[256];
   snprintf(state_topic, sizeof(state_topic),
            "homeassistant/sensor/unit_%02x/value", node_id);
@@ -149,6 +154,9 @@ int mqqt_test::publish_sensorvalue(int node_id, int sens_id,
 }
 
 int mqqt_test::publish_switch_value(int node_id, bool value) {
+
+  LOG_INFO(__FUNCTION__);
+
   char state_topic[256];
   snprintf(state_topic, sizeof(state_topic),
            "homeassistant/switch/unit_%02x/value", node_id);
@@ -160,6 +168,8 @@ int mqqt_test::publish_switch_value(int node_id, bool value) {
 }
 
 int mqqt_test::publish_switch(int node_id, int switch_id) {
+
+  LOG_INFO(__FUNCTION__);
 
   char config_topic[256];
   char state_topic[256];

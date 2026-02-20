@@ -22,6 +22,8 @@ CXX_SRC 	 += utils/time.cpp
 
 CXX_INCLUDES += $(UCDEV_ROOT)/lib/bsprot
 
+
+CXX_INCLUDES += .
 C_SRC		+= $(UCDEV_ROOT)/lib/bsprot/protocol.c
 
 

@@ -17,7 +17,7 @@
 #include <set>
 
 class SensorManager {
- public:
+public:
   SensorManager();
   virtual ~SensorManager();
 
@@ -47,9 +47,9 @@ class SensorManager {
   void dongleNodeCommunicationStatus(uint32_t dongle_id, uint8_t node_id,
                                      uint8_t status, uint8_t command);
 
- private:
-  std::map<uint32_t, std::map<uint8_t, nlohmann::json> > mConfiguration;
-  std::map<uint32_t, std::map<uint8_t, nlohmann::json> > mValue;
+private:
+  std::map<uint32_t, std::map<uint8_t, nlohmann::json>> mConfiguration;
+  std::map<uint32_t, std::map<uint8_t, nlohmann::json>> mValue;
   std::set<uint32_t> mDongles;
   std::mutex mMutex;
   static void sensorThread(SensorManager *);
@@ -111,7 +111,7 @@ class SensorManager {
       "sensor_id INTEGER, "
       "time INTEGER, "
       "status INTEGER, "
-	  "command INTEGER, "
+      "command INTEGER, "
       "FOREIGN KEY (dongle_id, node_id) "
       "REFERENCES nodes (dongle_id, node_id) "
       "ON DELETE CASCADE "

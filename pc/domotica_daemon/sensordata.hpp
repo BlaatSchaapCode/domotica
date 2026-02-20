@@ -8,11 +8,10 @@
 #ifndef SENSORDATA_HPP_
 #define SENSORDATA_HPP_
 
-#include <stdint.h>
 #include "DeviceManager.hpp"
+#include <stdint.h>
 
-void sensorDataThread(DeviceManager *dm, uint32_t dongle_id, uint8_t node_id, unsigned int interval) ;
-
-
+void sensorDataThread(DeviceManager *dm, uint32_t dongle_id, uint8_t node_id,
+                      unsigned int interval);
 
 #endif /* SENSORDATA_HPP_ */

@@ -37,29 +37,30 @@ bscp_handler_status_t forward_handler(bscp_protocol_packet_t *data,
 
   auto device = m_dm.getDevice(forward_data.dongle_id);
   switch (data->head.sub) {
-    case BSCP_SUB_QSET:
+  case BSCP_SUB_QSET:
 
-      g_sm.nodeValueReset(forward_data.dongle_id, forward_data.transport.from);
+    g_sm.nodeValueReset(forward_data.dongle_id, forward_data.transport.from);
 
-      protocol_parse(forwarded_data->data,
-                     data->head.size - sizeof(protocol_transport_header_t),
-                     transport, &forward_data);
-      if (device) device->notify_remote_response();
+    protocol_parse(forwarded_data->data,
+                   data->head.size - sizeof(protocol_transport_header_t),
+                   transport, &forward_data);
+    if (device)
+      device->notify_remote_response();
 
-      g_sm.nodeValuePublish(forward_data.dongle_id,
-                            forward_data.transport.from);
+    g_sm.nodeValuePublish(forward_data.dongle_id, forward_data.transport.from);
 
-      return BSCP_HANDLER_STATUS_OK;
-    case BSCP_SUB_SSTA:
-      LOG_INFO("forward handler, dongle %08X, from %02X, to %02X, status %02X",
-               forward_data.dongle_id, forward_data.transport.from,
-               forward_data.transport.to, data->head.res);
-      if (device) device->notify_local_response(data->head.res);
-      return BSCP_HANDLER_STATUS_OK;
-    case BSCP_SUB_SDAT:
-    case BSCP_SUB_QGET:
-    default:
-      return BSCP_HANDLER_STATUS_BADSUB;
+    return BSCP_HANDLER_STATUS_OK;
+  case BSCP_SUB_SSTA:
+    LOG_INFO("forward handler, dongle %08X, from %02X, to %02X, status %02X",
+             forward_data.dongle_id, forward_data.transport.from,
+             forward_data.transport.to, data->head.res);
+    if (device)
+      device->notify_local_response(data->head.res);
+    return BSCP_HANDLER_STATUS_OK;
+  case BSCP_SUB_SDAT:
+  case BSCP_SUB_QGET:
+  default:
+    return BSCP_HANDLER_STATUS_BADSUB;
   }
 }
 
@@ -103,63 +104,57 @@ bscp_handler_status_t sensordata_handler(bscp_protocol_packet_t *packet,
   char value[16];
 
   switch (sensordata->type) {
-    case bsprot_sensor_temperature:
-      device_class = "temperature";
-      unit_of_measurement = "°C";
-      snprintf(value, sizeof(value), "%6.2f",
-               (float)(sensordata->value.temperature_centi_celcius) / 100.0f);
-      value_float =
-          (float)(sensordata->value.temperature_centi_celcius) / 100.0f;
-      break;
-    case bsprot_sensor_humidity:
-      device_class = "humidity";
-      unit_of_measurement = "%";
-      snprintf(value, sizeof(value), "%6.1f",
-               (float)(sensordata->value.humidify_relative_promille) / 10.0f);
-      value_float =
-          (float)(sensordata->value.humidify_relative_promille) / 10.0f;
-      break;
-    case bsprot_sensor_illuminance:
-      device_class = "illuminance";
-      unit_of_measurement = "lux";
-      snprintf(value, sizeof(value), "%7.0f",
-               (float)sensordata->value.illuminance_lux);
-      value_float = (float)sensordata->value.illuminance_lux;
-      break;
-    case bsprot_sensor_airpressure:
-      device_class = "atmospheric_pressure";
-      unit_of_measurement = "hPa";
-      snprintf(value, sizeof(value), "%6.1f",
-               (float)(sensordata->value.air_pressure_deci_pascal) / 10.0f);
-      value_float = (float)(sensordata->value.air_pressure_deci_pascal) / 10.0f;
-      break;
-    case bsprot_sensor_co2:
-      device_class = "carbon_dioxide";
-      unit_of_measurement = "ppm";
-      snprintf(value, sizeof(value), "%7.0f", (float)sensordata->value.co2_ppm);
-      value_float = (float)sensordata->value.co2_ppm;
-      break;
-    case bsprot_sensor_eco2:
-      device_class =
-          "carbon_dioxide";  // Best match, misses the "estimated" part
-      unit_of_measurement = "ppm";
-      snprintf(value, sizeof(value), "%7.0f",
-               (float)sensordata->value.eco2_ppm);
-      value_float = (float)sensordata->value.eco2_ppm;
-      break;
-    case bsprot_sensor_etvoc:
-      device_class =
-          "volatile_organic_compounds_parts";  // Best match, misses the
-                                               // "estimated" part
-      unit_of_measurement = "ppb";
-      snprintf(value, sizeof(value), "%7.0f",
-               (float)sensordata->value.etvoc_ppb);
-      value_float = (float)sensordata->value.etvoc_ppb;
-      break;
-    default:
-      LOG_INFO("Unknown sensor type %02X\n", sensordata->type);
-      return BSCP_HANDLER_STATUS_BADDATA;
-      break;
+  case bsprot_sensor_temperature:
+    device_class = "temperature";
+    unit_of_measurement = "°C";
+    snprintf(value, sizeof(value), "%6.2f",
+             (float)(sensordata->value.temperature_centi_celcius) / 100.0f);
+    value_float = (float)(sensordata->value.temperature_centi_celcius) / 100.0f;
+    break;
+  case bsprot_sensor_humidity:
+    device_class = "humidity";
+    unit_of_measurement = "%";
+    snprintf(value, sizeof(value), "%6.1f",
+             (float)(sensordata->value.humidify_relative_promille) / 10.0f);
+    value_float = (float)(sensordata->value.humidify_relative_promille) / 10.0f;
+    break;
+  case bsprot_sensor_illuminance:
+    device_class = "illuminance";
+    unit_of_measurement = "lux";
+    snprintf(value, sizeof(value), "%7.0f",
+             (float)sensordata->value.illuminance_lux);
+    value_float = (float)sensordata->value.illuminance_lux;
+    break;
+  case bsprot_sensor_airpressure:
+    device_class = "atmospheric_pressure";
+    unit_of_measurement = "hPa";
+    snprintf(value, sizeof(value), "%6.1f",
+             (float)(sensordata->value.air_pressure_deci_pascal) / 10.0f);
+    value_float = (float)(sensordata->value.air_pressure_deci_pascal) / 10.0f;
+    break;
+  case bsprot_sensor_co2:
+    device_class = "carbon_dioxide";
+    unit_of_measurement = "ppm";
+    snprintf(value, sizeof(value), "%7.0f", (float)sensordata->value.co2_ppm);
+    value_float = (float)sensordata->value.co2_ppm;
+    break;
+  case bsprot_sensor_eco2:
+    device_class = "carbon_dioxide"; // Best match, misses the "estimated" part
+    unit_of_measurement = "ppm";
+    snprintf(value, sizeof(value), "%7.0f", (float)sensordata->value.eco2_ppm);
+    value_float = (float)sensordata->value.eco2_ppm;
+    break;
+  case bsprot_sensor_etvoc:
+    device_class = "volatile_organic_compounds_parts"; // Best match, misses the
+                                                       // "estimated" part
+    unit_of_measurement = "ppb";
+    snprintf(value, sizeof(value), "%7.0f", (float)sensordata->value.etvoc_ppb);
+    value_float = (float)sensordata->value.etvoc_ppb;
+    break;
+  default:
+    LOG_INFO("Unknown sensor type %02X\n", sensordata->type);
+    return BSCP_HANDLER_STATUS_BADDATA;
+    break;
   }
 
   //  fix f;
@@ -180,6 +175,11 @@ bscp_handler_status_t info_handler(bscp_protocol_packet_t *data,
   forward_data_t forward_data = *(forward_data_t *)(param);
   bscp_protocol_info_t *info = (bscp_protocol_info_t *)data->data;
 
+  if (data->head.size < sizeof(data->head)) {
+    // Bad header. Reported size smaller then the header
+    return BSCP_HANDLER_STATUS_BADSIZE;
+  }
+
   int count =
       (data->head.size - sizeof(data->head)) / sizeof(bscp_protocol_info_t);
 
@@ -187,16 +187,16 @@ bscp_handler_status_t info_handler(bscp_protocol_packet_t *data,
 
   for (int i = 0; i < count; i++) {
     switch (info[i].cmd) {
-      case BSCP_CMD_SENSOR0_VALUE:
-        g_sm.nodeInfoAddSensor(forward_data.dongle_id,
-                               forward_data.transport.from, info[i].index,
-                               info[i].flags);
-        break;
-      case BSCP_CMD_SWITCH:
-        g_sm.nodeInfoAddSwitch(forward_data.dongle_id,
-                               forward_data.transport.from, info[i].index,
-                               info[i].flags);
-        break;
+    case BSCP_CMD_SENSOR0_VALUE:
+      g_sm.nodeInfoAddSensor(forward_data.dongle_id,
+                             forward_data.transport.from, info[i].index,
+                             info[i].flags);
+      break;
+    case BSCP_CMD_SWITCH:
+      g_sm.nodeInfoAddSwitch(forward_data.dongle_id,
+                             forward_data.transport.from, info[i].index,
+                             info[i].flags);
+      break;
     }
   }
 
@@ -222,27 +222,27 @@ bscp_handler_status_t info_handler_(bscp_protocol_packet_t *data,
     const char *unit_of_measurement = {};
 
     switch (info[i].cmd) {
-      case BSCP_CMD_SENSOR0_VALUE:
-        switch (info[i].flags) {
-          case (1 << bsprot_sensor_temperature):
-            device_class = "temperature";
-            unit_of_measurement = "°C";
-            break;
-          case (1 << bsprot_sensor_illuminance):
-            device_class = "illuminance";
-            unit_of_measurement = "lux";
-            break;
-          default:
-            continue;
-        }
-        gp_mqtt->publish_sensor(forward_data.transport.from, info[i].index,
-                                device_class, unit_of_measurement);
+    case BSCP_CMD_SENSOR0_VALUE:
+      switch (info[i].flags) {
+      case (1 << bsprot_sensor_temperature):
+        device_class = "temperature";
+        unit_of_measurement = "°C";
         break;
-      case BSCP_CMD_SWITCH:
-        gp_mqtt->publish_switch(forward_data.transport.from, info[i].index);
+      case (1 << bsprot_sensor_illuminance):
+        device_class = "illuminance";
+        unit_of_measurement = "lux";
         break;
       default:
-        break;
+        continue;
+      }
+      gp_mqtt->publish_sensor(forward_data.transport.from, info[i].index,
+                              device_class, unit_of_measurement);
+      break;
+    case BSCP_CMD_SWITCH:
+      gp_mqtt->publish_switch(forward_data.transport.from, info[i].index);
+      break;
+    default:
+      break;
     }
   }
 
@@ -250,8 +250,8 @@ bscp_handler_status_t info_handler_(bscp_protocol_packet_t *data,
 }
 
 bscp_handler_status_t ping_handler(bscp_protocol_packet_t *data,
-                                    protocol_transport_t transport,
-                                    void *param) {
+                                   protocol_transport_t transport,
+                                   void *param) {
   return BSCP_HANDLER_STATUS_OK;
 }
 
@@ -274,7 +274,8 @@ int main(int argc, char *argv[]) {
 
   g_sm.begin();
 
-  while (1) sleep(1);
+  while (1)
+    sleep(1);
 
   mosqpp::lib_cleanup();
 }

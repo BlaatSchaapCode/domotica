@@ -264,6 +264,7 @@ std::string SensorManager::getUnitOfMeasurement(uint8_t sensor_flags) {
 
 void SensorManager::nodeInfoAddSensor(uint32_t dongle_id, uint8_t node_id,
                                       uint8_t sensor_id, uint8_t sensor_flags) {
+  LOG_INFO(__FUNCTION__);
   nlohmann::json json;
   char state_topic[256];
   char command_topic[256];
@@ -322,6 +323,7 @@ void SensorManager::nodeInfoAddSensor(uint32_t dongle_id, uint8_t node_id,
 }
 void SensorManager::nodeInfoAddSwitch(uint32_t dongle_id, uint8_t node_id,
                                       uint8_t switch_id, uint8_t switch_flags) {
+  LOG_INFO(__FUNCTION__);
   nlohmann::json json;
   char state_topic[256];
   char command_topic[256];
@@ -417,6 +419,8 @@ void SensorManager::nodeValueAddSwitch(uint32_t dongle_id, uint8_t node_id,
   // TODO: Database
 }
 void SensorManager::nodeValuePublish(uint32_t dongle_id, uint8_t node_id) {
+  LOG_INFO(__FUNCTION__);
+
   // homeassistant/device/D0226E5D/06/state
   mValue[dongle_id][node_id];
 
