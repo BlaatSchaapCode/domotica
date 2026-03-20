@@ -38,6 +38,24 @@
 
 #define ONEWIRE_PIN 17
 
+
+static uint8_t crc8_maxim(uint8_t *data, uint16_t length) {
+	uint8_t i;
+	uint8_t crc = 0;         // Initial value
+	while (length--) {
+		crc ^= *data++;        // crc ^= *data; data++;
+		for (i = 0; i < 8; i++) {
+			if (crc & 1)
+				crc = (crc >> 1) ^ 0x8C;        // 0x8C = reverse 0x31
+			else
+				crc >>= 1;
+		}
+	}
+	return crc;
+}
+
+
+
 void ds18x20_init() {
 
 	bshal_gpio_cfg_out(ONEWIRE_PIN, opendrain, true);
@@ -191,6 +209,19 @@ int ds18x20_scan_bus(ds18b20_t *ds18b20, size_t size) {
 			ds18b20_send_bit(ONEWIRE_PIN, bits[0]);
 		}
 
+		// This test succeeds, the CRC in the serial number matches
+		// // test
+		// char test[8];
+		// test[0] = ds18b20[entry].device_id;
+		// test[1] = ds18b20[entry].device_id >> 8;
+		// test[2] = ds18b20[entry].device_id >> 16;
+		// test[3] = ds18b20[entry].device_id >> 24;
+		// test[4] = ds18b20[entry].device_id >> 32;
+		// test[5] = ds18b20[entry].device_id >> 40;
+		// test[6] = ds18b20[entry].device_id >> 48;
+		// test[7] = ds18b20[entry].device_id >> 56;
+		// int crc = crc8_maxim (test , 7);
+
 		entry++;
 
 	}
@@ -217,14 +248,14 @@ int ds18x20_convert(ds18b20_t *ds18b20, bool wait) {
 	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id >> 56);
 	result = ds18x20_write_byte(ONEWIRE_PIN, DS18B20_TEMPERATURE_CONVERT);
 	if (wait) {
-	bool readbit = 0;
-	int begin = get_time_us();
-	while (!readbit) {
-		int timeout = get_time_us() - begin;
-		if (timeout > 1000000)
-			return -1; // timeout
-		ds18x20_read_bit(ONEWIRE_PIN, &readbit);
-	}
+		bool readbit = 0;
+		int begin = get_time_us();
+		while (!readbit) {
+			int timeout = get_time_us() - begin;
+			if (timeout > 1000000)
+				return -1; // timeout
+			ds18x20_read_bit(ONEWIRE_PIN, &readbit);
+		}
 
 //	int end = get_time_us();
 //	printf("Conversion took %d ms\n",(end-begin)/1000);
@@ -265,43 +296,51 @@ int ds18x20_read_float(ds18b20_t *ds18b20, float *temperature_f) {
 		*temperature_f = 0.5f * (float) (*temperature);
 	}
 
+	uint8_t crc = crc8_maxim(scratchpad, 8);
+	if (!result)
+		result = (crc == scratchpad[8]);
+
 	return result;
 }
 typedef short accum saccum;
-int ds18x20_read_saccum(ds18b20_t *ds18b20, saccum * temperature_sa) {
+int ds18x20_read_saccum(ds18b20_t *ds18b20, saccum *temperature_sa) {
 	int result;
 	result = ds18x20_reset(ONEWIRE_PIN);
 	if (result)
-	return result;
+		return result;
 
 	result = ds18x20_write_byte(ONEWIRE_PIN, OW_ROM_MATCH);
 	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id);
-	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id>>8);
-	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id>>16);
-	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id>>24);
-	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id>>32);
-	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id>>40);
-	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id>>48);
-	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id>>56);
+	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id >> 8);
+	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id >> 16);
+	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id >> 24);
+	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id >> 32);
+	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id >> 40);
+	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id >> 48);
+	result = ds18x20_write_byte(ONEWIRE_PIN, ds18b20->device_id >> 56);
 	result = ds18x20_write_byte(ONEWIRE_PIN, DS18X20_SCRATCHPAD_READ);
-	uint8_t scratchpad[9]= {};
+	uint8_t scratchpad[9] = { };
 	for (int i = 0; i < sizeof(scratchpad); i++)
-	result = ds18b20_read_byte(ONEWIRE_PIN, scratchpad+i);
-	uint16_t *temperature=(uint16_t *)scratchpad;
+		result = ds18b20_read_byte(ONEWIRE_PIN, scratchpad + i);
+	uint16_t *temperature = (uint16_t*) scratchpad;
 
-	switch (ds18b20->device_id&0xFF) {
-		case DS18B20_FAMILY_CODE:
-		case DS1822_FAMILY_CODE:
+	uint8_t crc = crc8_maxim(scratchpad, 8);
+	if (!result)
+		result = (crc != scratchpad[8]);
+
+	switch (ds18b20->device_id & 0xFF) {
+	case DS18B20_FAMILY_CODE:
+	case DS1822_FAMILY_CODE:
 		//DS18B20
 		//*temperature_f = 0.0625f * (float)(*temperature);
-		*temperature <<=3;
+		*temperature <<= 3;
 		*temperature_sa = *((short accum*)(scratchpad));
 		break;
-		case DS18S20_FAMILY_CODE:
+	case DS18S20_FAMILY_CODE:
 		//DS1820
 		//DS18S20
 		//*temperature_f = 0.5f * (float)(*temperature);
-		*temperature <<=5;
+		*temperature <<= 5;
 		*temperature_sa = *((short accum*)(scratchpad));
 	}
 
