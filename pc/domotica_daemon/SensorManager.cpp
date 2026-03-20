@@ -12,15 +12,15 @@
 
 #include "mqtt.hpp"
 #include "sensor_protocol.h"
-extern mqqt_test *gp_mqtt;
+extern mqqt_test* gp_mqtt;
 
 #include <thread>
 
 #include "DeviceManager.hpp"
 #include "utils/logger.hpp"
 
-extern DeviceManager *p_dm;
-void sensorDataThread(DeviceManager *dm, uint32_t dongle_id, uint8_t node_id,
+extern DeviceManager* p_dm;
+void sensorDataThread(DeviceManager* dm, uint32_t dongle_id, uint8_t node_id,
                       unsigned int interval);
 
 // It seems Domoticz does not support publishing the whole device at once
@@ -46,7 +46,7 @@ SensorManager::SensorManager() {
     LOG_INFO("Database opened successfully: %s", sqlite3_errmsg(mDb));
   }
 
-  char *errmsg;
+  char* errmsg;
   rc = sqlite3_exec(mDb, mCreateTables, NULL, 0, &errmsg);
   if (rc != SQLITE_OK) {
     LOG_INFO("Failed to create tables:  %s", sqlite3_errmsg(mDb));
@@ -62,15 +62,15 @@ SensorManager::~SensorManager() {
   // TODO Auto-generated destructor stub
 }
 
-void SensorManager::sensorThread(SensorManager *_this) {
-  sqlite3_stmt *res;
+void SensorManager::sensorThread(SensorManager* _this) {
+  sqlite3_stmt* res;
   int rc;
   while (true) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     if (true) {
       const std::lock_guard<std::mutex> lock(_this->mMutex);
       for (auto dongle_id : _this->mDongles) {
-        const char *sqlSelect =
+        const char* sqlSelect =
             "SELECT node_id, query_interval, last_queried, status FROM nodes "
             "WHERE dongle_id = ?";
         rc = sqlite3_prepare_v2(_this->mDb, sqlSelect, -1, &res, 0);
@@ -95,13 +95,13 @@ void SensorManager::sensorThread(SensorManager *_this) {
                 dongle_id, node_id, status);
             auto d = p_dm->getDevice(dongle_id);
             if (d) {
-              d->getInfo(node_id); // testint
+              d->getInfo(node_id);  // testint
 
               d->getData(node_id);
 
-              sqlite3_stmt *stmt2;
+              sqlite3_stmt* stmt2;
               // TODO update
-              const char *sqlUpdate =
+              const char* sqlUpdate =
                   "UPDATE nodes SET last_queried=unixepoch(), "
                   "last_seen=unixepoch() WHERE dongle_id=? AND node_id=?";
               rc = sqlite3_prepare_v2(_this->mDb, sqlUpdate, -1, &stmt2, 0);
@@ -135,9 +135,9 @@ void SensorManager::sensorThread(SensorManager *_this) {
 }
 
 void SensorManager::dongleArrived(uint32_t dongle_id) {
-  sqlite3_stmt *res;
+  sqlite3_stmt* res;
   int rc;
-  const char *sqlSelect = "SELECT * FROM dongles WHERE dongle_id = ?";
+  const char* sqlSelect = "SELECT * FROM dongles WHERE dongle_id = ?";
   rc = sqlite3_prepare_v2(mDb, sqlSelect, -1, &res, 0);
 
   if (rc == SQLITE_OK) {
@@ -162,10 +162,9 @@ void SensorManager::dongleArrived(uint32_t dongle_id) {
 
   sqlite3_finalize(res);
 
-  if (step != SQLITE_ROW)
-    return;
+  if (step != SQLITE_ROW) return;
   ///
-  const char *sqlUpdate =
+  const char* sqlUpdate =
       "UPDATE dongles SET last_seen=unixepoch() WHERE dongle_id=?";
   rc = sqlite3_prepare_v2(mDb, sqlUpdate, -1, &res, 0);
 
@@ -229,35 +228,35 @@ void SensorManager::nodeInfoReset(uint32_t dongle_id, uint8_t node_id) {
 
 std::string SensorManager::getDeviceClass(uint8_t sensor_flags) {
   switch (sensor_flags) {
-  case (1 << bsprot_sensor_temperature):
-    return "temperature";
+    case (1 << bsprot_sensor_temperature):
+      return "temperature";
 
-  case (1 << bsprot_sensor_illuminance):
-    return "illuminance";
+    case (1 << bsprot_sensor_illuminance):
+      return "illuminance";
   }
   return "unknown";
 }
 
 std::string SensorManager::getDeviceClass2(uint8_t sensor_flags) {
   switch (sensor_flags) {
-  case (bsprot_sensor_temperature):
-    return "temperature";
+    case (bsprot_sensor_temperature):
+      return "temperature";
 
-  case (bsprot_sensor_illuminance):
-    return "illuminance";
+    case (bsprot_sensor_illuminance):
+      return "illuminance";
   }
   return "unknown";
 }
 
 std::string SensorManager::getUnitOfMeasurement(uint8_t sensor_flags) {
   switch (sensor_flags) {
-  case (1 << bsprot_sensor_temperature):
+    case (1 << bsprot_sensor_temperature):
 
-    return "°C";
+      return "°C";
 
-  case (1 << bsprot_sensor_illuminance):
+    case (1 << bsprot_sensor_illuminance):
 
-    return "lux";
+      return "lux";
   }
   return "unknown";
 }
@@ -314,13 +313,108 @@ void SensorManager::nodeInfoAddSensor(uint32_t dongle_id, uint8_t node_id,
       json["unique_id"] = unique_id;
 
       int mid;
-      std::string test_std = json.dump(4); // for debug
-      const char *test_cstr = test_std.c_str();
-      gp_mqtt->publish(&mid, config_topic, strlen(test_cstr),
-                       (void *)test_cstr);
+      std::string test_std = json.dump(4);  // for debug
+      const char* test_cstr = test_std.c_str();
+      gp_mqtt->publish(&mid, config_topic, strlen(test_cstr), (void*)test_cstr);
     }
   }
 }
+
+//--
+void SensorManager::nodeInfoAddDsmrEnergy(uint32_t dongle_id, uint8_t node_id,
+                                          uint8_t sensor_id,
+                                          uint8_t sensor_flags) {
+  LOG_INFO(__FUNCTION__);
+  int mid;
+  const char* test_cstr;
+  std::string test_std;
+
+  nlohmann::json json;
+  char state_topic[256];
+  char command_topic[256];
+  char config_topic[256];
+  char identifiers[256];
+  char unique_id[256];
+
+  snprintf(state_topic, sizeof(state_topic),
+           "homeassistant/device/%08X/%02X/state", dongle_id, node_id);
+  snprintf(command_topic, sizeof(command_topic),
+           "homeassistant/device/%08X/%02X/command", dongle_id, node_id);
+  snprintf(config_topic, sizeof(config_topic),
+           "homeassistant/sensor/%08X/%02X/config", dongle_id, node_id);
+  snprintf(identifiers, sizeof(identifiers), "%08X_%02X", dongle_id, node_id);
+
+  json["state_topic"] = state_topic;
+  json["command_topic"] = command_topic;
+
+  json["origin"]["name"] = "BlaatSchaap Domotica";
+  json["origin"]["sw_version"] = "dev";
+  json["origin"]["url"] = "https://www.blaatschaap.be";
+
+  //	json["device"]	["configuration_url"];
+  //	json["device"]	["connections"];
+  json["device"]["identifiers"] = identifiers;
+  json["device"]["name"] = "DSMR Dongle";
+  json["device"]["manufacturer"] = "BlaatSchaap";
+  //	json["device"]	["model"];
+  //	json["device"]	["model_id"];
+  //	json["device"]	["hw_version"];
+  //	json["device"]	["sw_version"];
+  //	json["device"]	["suggested_area"];
+  //	json["device"]	["serial_number"];
+
+  json["device_class"] = "energy";
+  json["unit_of_measurement"] = "kWh";
+
+  json["device"]["name"] = "DSMR Dongle: lo received";
+  snprintf(unique_id, sizeof(unique_id), "%08X_%02X_lo_received_kilowatthour",
+           dongle_id, node_id);
+  json["value_template"] = "{{value_json.lo_received_kilowatthour}}";
+  json["unique_id"] = unique_id;
+  test_std = json.dump(4);  // for debug
+  test_cstr = test_std.c_str();
+  gp_mqtt->publish(&mid, config_topic, strlen(test_cstr), (void*)test_cstr);
+
+  json["device"]["name"] = "DSMR Dongle: lo delivered";
+  snprintf(unique_id, sizeof(unique_id), "%08X_%02X_lo_delivered_kilowatthour",
+           dongle_id, node_id);
+  json["value_template"] = "{{value_json.lo_delivered_kilowatthour}}";
+  json["unique_id"] = unique_id;
+  test_std = json.dump(4);  // for debug
+  test_cstr = test_std.c_str();
+  gp_mqtt->publish(&mid, config_topic, strlen(test_cstr), (void*)test_cstr);
+
+  json["device"]["name"] = "DSMR Dongle: hi received";
+  snprintf(unique_id, sizeof(unique_id), "%08X_%02X_hi_received_kilowatthour",
+           dongle_id, node_id);
+  json["value_template"] = "{{value_json.hi_received_kilowatthour}}";
+  json["unique_id"] = unique_id;
+  test_std = json.dump(4);  // for debug
+  test_cstr = test_std.c_str();
+  gp_mqtt->publish(&mid, config_topic, strlen(test_cstr), (void*)test_cstr);
+
+  json["device"]["name"] = "DSMR Dongle: hi delivered";
+  snprintf(unique_id, sizeof(unique_id), "%08X_%02X_hi_delivered_kilowatthour",
+           dongle_id, node_id);
+  json["value_template"] = "{{value_json.hi_delivered_kilowatthour}}";
+  json["unique_id"] = unique_id;
+  test_std = json.dump(4);  // for debug
+  test_cstr = test_std.c_str();
+  gp_mqtt->publish(&mid, config_topic, strlen(test_cstr), (void*)test_cstr);
+}
+
+void SensorManager::nodeInfoAddDsmrPhase1(uint32_t dongle_id, uint8_t node_id,
+                                          uint8_t sensor_id,
+                                          uint8_t sensor_flags) {}
+void SensorManager::nodeInfoAddDsmrPhase2(uint32_t dongle_id, uint8_t node_id,
+                                          uint8_t sensor_id,
+                                          uint8_t sensor_flags) {}
+void SensorManager::nodeInfoAddDsmrPhase3(uint32_t dongle_id, uint8_t node_id,
+                                          uint8_t sensor_id,
+                                          uint8_t sensor_flags) {}
+
+//--
+
 void SensorManager::nodeInfoAddSwitch(uint32_t dongle_id, uint8_t node_id,
                                       uint8_t switch_id, uint8_t switch_flags) {
   LOG_INFO(__FUNCTION__);
@@ -367,9 +461,9 @@ void SensorManager::nodeInfoAddSwitch(uint32_t dongle_id, uint8_t node_id,
   //	json["unique_id"];
 
   int mid;
-  std::string test_std = json.dump(4); // for debug
-  const char *test_cstr = test_std.c_str();
-  gp_mqtt->publish(&mid, config_topic, strlen(test_cstr), (void *)test_cstr);
+  std::string test_std = json.dump(4);  // for debug
+  const char* test_cstr = test_std.c_str();
+  gp_mqtt->publish(&mid, config_topic, strlen(test_cstr), (void*)test_cstr);
 }
 
 void SensorManager::nodeInfoPublish(uint32_t dongle_id, uint8_t node_id) {
@@ -387,8 +481,8 @@ void SensorManager::nodeValueAddSensor(uint32_t dongle_id, uint8_t node_id,
            getDeviceClass2(sensor_type).c_str(), sensor_id);
   mValue[dongle_id][node_id][buffer] = value;
 
-  sqlite3_stmt *res;
-  const char *sqlInsert =
+  sqlite3_stmt* res;
+  const char* sqlInsert =
       "INSERT INTO `values` (dongle_id, node_id, sensor_id, sensor_type, "
       "sensor_value, time)"
       "values (?,?,?,?,?,?)";
@@ -409,6 +503,28 @@ void SensorManager::nodeValueAddSensor(uint32_t dongle_id, uint8_t node_id,
   if (rc == SQLITE_DONE) {
   }
 }
+
+void SensorManager::nodeValueAddDsmrEnergy(uint32_t dongle_id, uint8_t node_id,
+                                           float lo_received_kilowatthour,
+                                           float lo_delivered_kilowatthour,
+                                           float hi_received_kilowatthour,
+                                           float hi_delivered_kilowatthour) {
+  mValue[dongle_id][node_id]["lo_received_kilowatthour"] =
+      lo_received_kilowatthour;
+  mValue[dongle_id][node_id]["lo_delivered_kilowatthour"] =
+      lo_delivered_kilowatthour;
+  mValue[dongle_id][node_id]["hi_received_kilowatthour"] =
+      hi_received_kilowatthour;
+  mValue[dongle_id][node_id]["hi_delivered_kilowatthour"] =
+      hi_delivered_kilowatthour;
+
+  std::string test_std = mValue[dongle_id][node_id].dump(4);
+  const char* test_cstr = test_std.c_str();
+  puts(test_cstr);
+
+
+}
+
 void SensorManager::nodeValueAddSwitch(uint32_t dongle_id, uint8_t node_id,
                                        uint8_t switch_id, uint8_t switch_flags,
                                        bool value) {
@@ -430,8 +546,8 @@ void SensorManager::nodeValuePublish(uint32_t dongle_id, uint8_t node_id) {
 
   int mid;
   std::string test_std = mValue[dongle_id][node_id].dump(4);
-  const char *test_cstr = test_std.c_str();
-  gp_mqtt->publish(&mid, state_topic, strlen(test_cstr), (void *)test_cstr);
+  const char* test_cstr = test_std.c_str();
+  gp_mqtt->publish(&mid, state_topic, strlen(test_cstr), (void*)test_cstr);
 }
 
 void SensorManager::dongleNodeCommunicationStatus(uint32_t dongle_id,
@@ -441,8 +557,8 @@ void SensorManager::dongleNodeCommunicationStatus(uint32_t dongle_id,
   //----------
   // Begin Logging dongle reponse to database
   //----------
-  sqlite3_stmt *res;
-  const char *sqlInsert =
+  sqlite3_stmt* res;
+  const char* sqlInsert =
       "INSERT INTO `status` (dongle_id, node_id, time, status, command)"
       "values (?,?,?,?, ?)";
   auto rc = sqlite3_prepare_v2(mDb, sqlInsert, -1, &res, 0);

@@ -53,6 +53,7 @@
 #include "sensor_protocol.h"
 #include "switch_protocol.h"
 #include "time_protocol.h"
+#include "dsmr_protocol.h"
 
 #include <bshal_gpio_stm32.h>
 #include <bshal_i2cm.h>
@@ -73,6 +74,16 @@
 #include "pair_protocol.h"
 
 #include <SEGGER_RTT.h>
+
+char recvbuffer[2048] = { }; // do we have enough ram
+char procbuffer[2048] = { }; // do we have enough ram
+char donebuffer[2048] = { }; // do we have enough ram
+unsigned recvpos = 0;
+unsigned procpos = 0;
+bool synced = false;
+bool ready = false;
+
+meterstand_t meterstand = { };
 
 static bshal_i2cm_instance_t m_i2c;
 bshal_i2cm_instance_t *gp_i2c = NULL;
@@ -241,6 +252,7 @@ int radio_init(bsradio_instance_t *bsradio) {
 		bsradio->rfconfig.bandwidth_hz = 100000;
 
 		bsradio->rfconfig.network_id_size = 4;
+		*((uint32_t*) (bsradio->rfconfig.network_id)) = 0x03025926;
 
 		bsradio->rfconfig.node_id = 0x25;
 		bsradio->rfconfig.broadcast_id = 0xFF;
@@ -307,7 +319,36 @@ void SysTick_Handler(void) {
 }
 
 void deviceinfo_send() {
-	// todo
+	bsradio_packet_t request = { }, response = { };
+	request.from = gp_radio->rfconfig.node_id; // 0x03;
+	request.to = 0x00;
+#pragma pack(push, 1)
+	struct sensor_data_packet {
+		bscp_protocol_header_t head;
+		bscp_protocol_info_t info[4];
+	} deviceinfo_packet = { };
+#pragma pack(pop)
+	bscp_protocol_packet_t *packet =
+			(bscp_protocol_packet_t*) &deviceinfo_packet;
+	deviceinfo_packet.head.size = sizeof(deviceinfo_packet);
+	deviceinfo_packet.head.cmd = BSCP_CMD_INFO;
+	deviceinfo_packet.head.sub = BSCP_SUB_SDAT;
+
+	deviceinfo_packet.info[0].cmd = BSCP_CMD_DSMR_ENERGY;
+	deviceinfo_packet.info[1].cmd = BSCP_CMD_DSMR_PHASE1;
+	deviceinfo_packet.info[2].cmd = BSCP_CMD_DSMR_PHASE2;
+	deviceinfo_packet.info[3].cmd = BSCP_CMD_DSMR_PHASE3;
+
+	// That's all, send remaining
+	protocol_packet_merge(request.payload, sizeof(request.payload), packet);
+	request.length = 4
+			+ protocol_merged_packet_size(request.payload,
+					sizeof(request.payload));
+	bsradio_send_request(gp_radio, &request, &response);
+	//	request.payload[0] = 0;
+	memset(request.payload, 0, sizeof(request.payload));
+
+
 }
 
 bscp_handler_status_t info_handler(bscp_protocol_packet_t *packet,
@@ -324,6 +365,144 @@ void gpio_init() {
 	bshal_gpio_cfg_in(0, opendrain, 1);
 	bshal_gpio_cfg_in(2, opendrain, 1);
 	bshal_gpio_cfg_out(1, pushpull, 0);
+}
+
+void dsmr_send_phase1(void) {
+	bsradio_packet_t request = { }, response = { };
+	request.from = gp_radio->rfconfig.node_id;
+	request.to = 0x00;
+
+#pragma pack (push, 1)
+	struct {
+		bscp_protocol_header_t head;
+		bsprot_dsmr_phase_t phase;
+	} dsmr_packet;
+#pragma pack(pop)
+	memcpy(&dsmr_packet.phase, &meterstand.phases[0],
+			sizeof(dsmr_packet.phase));
+	dsmr_packet.head.size = sizeof(dsmr_packet.phase)
+			+ sizeof(dsmr_packet.head);
+
+	dsmr_packet.head.cmd = BSCP_CMD_DSMR_PHASE1;
+	dsmr_packet.head.sub = BSCP_SUB_QSET;
+	dsmr_packet.head.res = BSCP_HANDLER_STATUS_OK;
+
+	memcpy(request.payload, &dsmr_packet, dsmr_packet.head.size);
+	request.length = dsmr_packet.head.size + 4;
+	bsradio_send_request(gp_radio, &request, &response);
+}
+void dsmr_send_phase2(void) {
+	bsradio_packet_t request = { }, response = { };
+	request.from = gp_radio->rfconfig.node_id;
+	request.to = 0x00;
+
+#pragma pack (push, 1)
+	struct {
+		bscp_protocol_header_t head;
+		bsprot_dsmr_phase_t phase;
+	} dsmr_packet;
+#pragma pack(pop)
+	memcpy(&dsmr_packet.phase, &meterstand.phases[1],
+			sizeof(dsmr_packet.phase));
+	dsmr_packet.head.size = sizeof(dsmr_packet.phase)
+			+ sizeof(dsmr_packet.head);
+
+	dsmr_packet.head.cmd = BSCP_CMD_DSMR_PHASE2;
+	dsmr_packet.head.sub = BSCP_SUB_QSET;
+	dsmr_packet.head.res = BSCP_HANDLER_STATUS_OK;
+
+	memcpy(request.payload, &dsmr_packet, dsmr_packet.head.size);
+	request.length = dsmr_packet.head.size + 4;
+	bsradio_send_request(gp_radio, &request, &response);
+}
+void dsmr_send_phase3(void) {
+
+	bsradio_packet_t request = { }, response = { };
+	request.from = gp_radio->rfconfig.node_id;
+	request.to = 0x00;
+
+#pragma pack (push, 1)
+	struct {
+		bscp_protocol_header_t head;
+		bsprot_dsmr_phase_t phase;
+	} dsmr_packet;
+#pragma pack(pop)
+	memcpy(&dsmr_packet.phase, &meterstand.phases[2],
+			sizeof(dsmr_packet.phase));
+	dsmr_packet.head.size = sizeof(dsmr_packet.phase)
+			+ sizeof(dsmr_packet.head);
+
+	dsmr_packet.head.cmd = BSCP_CMD_DSMR_PHASE3;
+	dsmr_packet.head.sub = BSCP_SUB_QSET;
+	dsmr_packet.head.res = BSCP_HANDLER_STATUS_OK;
+
+	memcpy(request.payload, &dsmr_packet, dsmr_packet.head.size);
+	request.length = dsmr_packet.head.size + 4;
+	bsradio_send_request(gp_radio, &request, &response);
+
+}
+void dsmr_send_energy(void) {
+	bsradio_packet_t request = { }, response = { };
+	request.from = gp_radio->rfconfig.node_id;
+	request.to = 0x00;
+
+#pragma pack (push, 1)
+	struct {
+		bscp_protocol_header_t head;
+		bsprot_dsmr_energy_t energy;
+	} dsmr_packet;
+#pragma pack (pop)
+	memcpy(&dsmr_packet.energy, &meterstand.energy, sizeof(dsmr_packet.energy));
+	dsmr_packet.head.size = sizeof(dsmr_packet.energy)
+			+ sizeof(dsmr_packet.head);
+
+
+	dsmr_packet.head.cmd = BSCP_CMD_DSMR_ENERGY;
+	dsmr_packet.head.sub = BSCP_SUB_QSET;
+	dsmr_packet.head.res = BSCP_HANDLER_STATUS_OK;
+
+	memcpy(request.payload, &dsmr_packet, dsmr_packet.head.size);
+
+
+	request.length = dsmr_packet.head.size + 4;
+	bsradio_send_request(gp_radio, &request, &response);
+}
+bool dsmr_send_phase1_flag = false;
+bool dsmr_send_phase2_flag = false;
+bool dsmr_send_phase3_flag = false;
+bool dsmr_send_energy_flag = false;
+
+bscp_handler_status_t dsmr_handler(bscp_protocol_packet_t *packet,
+		protocol_transport_t transport, void *param) {
+	if (packet->head.sub != BSCP_SUB_QGET)
+		return BSCP_HANDLER_STATUS_BADSUB;
+
+	switch (packet->head.cmd) {
+	case BSCP_CMD_DSMR_ENERGY:
+		dsmr_send_energy_flag = true;
+		break;
+	case BSCP_CMD_DSMR_PHASE1:
+		dsmr_send_phase1_flag = true;
+		break;
+	case BSCP_CMD_DSMR_PHASE2:
+		dsmr_send_phase2_flag = true;
+		break;
+	case BSCP_CMD_DSMR_PHASE3:
+		dsmr_send_phase3_flag = true;
+		break;
+	default:
+		return BSCP_HANDLER_STATUS_BADCMD;
+	case 0x10:
+		dsmr_send_energy_flag = true;
+		dsmr_send_phase1_flag = true;
+		dsmr_send_phase2_flag = true;
+		dsmr_send_phase3_flag = true;
+		break;
+	}
+
+	dsmr_send_energy();
+
+	return BSCP_HANDLER_STATUS_OK;
 }
 
 bscp_handler_status_t pair_handler(bscp_protocol_packet_t *packet,
@@ -502,16 +681,6 @@ void radio_irq_init(void) {
 	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 2, 0);
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
-
-char recvbuffer[2048] = { }; // do we have enough ram
-char procbuffer[2048] = { }; // do we have enough ram
-char donebuffer[2048] = { }; // do we have enough ram
-unsigned recvpos = 0;
-unsigned procpos = 0;
-bool synced = false;
-bool ready = false;
-
-meterstand_t meterstand = { };
 
 void dsmr_process() {
 	if (ready) {
@@ -725,10 +894,20 @@ int main() {
 
 	protocol_register_command(pair_handler, BSCP_CMD_PAIR);
 
+	protocol_register_command(dsmr_handler, BSCP_CMD_DSMR_ENERGY);
+	protocol_register_command(dsmr_handler, BSCP_CMD_DSMR_PHASE1);
+	protocol_register_command(dsmr_handler, BSCP_CMD_DSMR_PHASE2);
+	protocol_register_command(dsmr_handler, BSCP_CMD_DSMR_PHASE3);
+
+	protocol_register_command(dsmr_handler, 0x10); // quick and dirty test
+
 	dsmr_test();
 
 	uart_init();
+	dsmr_send_energy();
 
+
+	uint32_t test = get_time_ms() + 1000;
 	while (1) {
 
 		dsmr_process();
@@ -737,6 +916,32 @@ int main() {
 		display_process(); 	//timekeeper("display_process");
 //		ir_process();   	//timekeeper("ir_process");
 		radio_process();	//timekeeper("radio_process");
+
+
+		if (test < get_time_ms()) {
+			 test = get_time_ms() + 1000;
+			 dsmr_send_energy();
+		}
+
+//		if (dsmr_send_phase1_flag) {
+//			dsmr_send_phase1_flag = false;
+//			dsmr_send_phase1();
+//		}
+//
+//		if (dsmr_send_phase2_flag) {
+//			dsmr_send_phase2_flag = false;
+//			dsmr_send_phase2();
+//		}
+//
+//		if (dsmr_send_phase3_flag) {
+//			dsmr_send_phase3_flag = false;
+//			dsmr_send_phase3();
+//		}
+//
+//		if (dsmr_send_energy_flag) {
+//			dsmr_send_energy_flag = false;
+//			dsmr_send_energy();
+//		}
 
 	}
 }

@@ -203,15 +203,16 @@ void sensors_process(void) {
 			 */
 			short accum temp;
 			result =  ds18x20_read_saccum(&ds18b20,  &temp);
-			if (result) {
-				puts("ds18x20_read failed");
-				return;
+			//if (result) {
+			//	puts("ds18x20_read failed");
+			//	return;
+			//}
+			if (!result) {
+				ds18b20_temperature_celcius = temp;
+				ds18b20_temperature_centi_celcius = temp*100;
+				ds18b20_ready = true;
+	//			printf("20: %4d\n",ds18b20_temperature_centi_celcius);
 			}
-			ds18b20_temperature_celcius = temp;
-			ds18b20_temperature_centi_celcius = temp*100;
-			ds18b20_ready = true;
-//			printf("20: %4d\n",ds18b20_temperature_centi_celcius);
-
 			result = ds18x20_convert(&ds18b20, false);
 
 

@@ -17,7 +17,7 @@
 #include <set>
 
 class SensorManager {
-public:
+ public:
   SensorManager();
   virtual ~SensorManager();
 
@@ -38,6 +38,22 @@ public:
                           uint8_t sensor_id, uint8_t sensor_flags, float value);
   void nodeValueAddSwitch(uint32_t dongle_id, uint8_t node_id,
                           uint8_t switch_id, uint8_t switch_flags, bool value);
+
+  void nodeValueAddDsmrEnergy(uint32_t dongle_id, uint8_t node_id, float, float,
+                              float, float);
+
+  void nodeInfoAddDsmrEnergy(uint32_t dongle_id, uint8_t node_id,
+                             uint8_t switch_id, uint8_t switch_flags);
+
+  void nodeInfoAddDsmrPhase1(uint32_t dongle_id, uint8_t node_id,
+                             uint8_t switch_id, uint8_t switch_flags);
+
+  void nodeInfoAddDsmrPhase2(uint32_t dongle_id, uint8_t node_id,
+                             uint8_t switch_id, uint8_t switch_flags);
+
+  void nodeInfoAddDsmrPhase3(uint32_t dongle_id, uint8_t node_id,
+                             uint8_t switch_id, uint8_t switch_flags);
+
   void nodeValuePublish(uint32_t dongle_id, uint8_t node_id);
 
   std::string getDeviceClass(uint8_t sensor_flags);
@@ -47,16 +63,16 @@ public:
   void dongleNodeCommunicationStatus(uint32_t dongle_id, uint8_t node_id,
                                      uint8_t status, uint8_t command);
 
-private:
+ private:
   std::map<uint32_t, std::map<uint8_t, nlohmann::json>> mConfiguration;
   std::map<uint32_t, std::map<uint8_t, nlohmann::json>> mValue;
   std::set<uint32_t> mDongles;
   std::mutex mMutex;
-  static void sensorThread(SensorManager *);
+  static void sensorThread(SensorManager*);
 
-  sqlite3 *mDb;
+  sqlite3* mDb;
 
-  const char *mCreateTables =
+  const char* mCreateTables =
 
       "CREATE TABLE IF NOT EXISTS `dongles` ( "
       "dongle_id INTEGER, "

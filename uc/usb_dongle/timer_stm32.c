@@ -32,7 +32,9 @@ void timer_init(void) {
 uint32_t get_time_us(void) {
   // return (TIM4->CNT) | (m_overflows << 16);
   while (1) {
+	NVIC_DisableIRQ(TIM4_IRQn);
     uint32_t overflow = m_overflows;
+    NVIC_EnableIRQ(TIM4_IRQn);
     uint32_t result = (TIM4->CNT);
     if (overflow == m_overflows)
       return result | (overflow << 16);
