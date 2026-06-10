@@ -7,6 +7,9 @@
 #include "mqtt.hpp"
 #include "utils/logger.hpp"
 
+#include <unistd.h>
+
+
 static DeviceManager m_dm;
 DeviceManager* p_dm;
 mqqt_test* gp_mqtt;
@@ -88,9 +91,9 @@ bscp_handler_status_t dsmr_energy_handler(bscp_protocol_packet_t* packet,
   ;
 
   g_sm.nodeValueAddDsmrEnergy(
-      dongle_id, unit_id, energy->hi_delivered_kilowatthour,
-      energy->hi_received_kilowatthour, energy->lo_delivered_kilowatthour,
-      energy->lo_received_kilowatthour);
+      dongle_id, unit_id, energy->lo_received_kilowatthour,
+      energy->lo_delivered_kilowatthour, energy->hi_received_kilowatthour,
+      energy->hi_delivered_kilowatthour );
   return BSCP_HANDLER_STATUS_OK;
 }
 //,
