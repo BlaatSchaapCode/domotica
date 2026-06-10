@@ -11,10 +11,8 @@
 typedef struct {
 	float u_volt;
 	float i_ampere;
-	float e_received_kilowatt;
-	float e_delivered_kilowatt;
-	float p_receiving;
-	float p_delivering;
+	float p_receiving_kilowatt;
+	float p_delivering_kilowatt;
 } phase_t;
 
 typedef struct {

@@ -11,6 +11,12 @@
 #include <float.h>
 #include <math.h>
 
+// Direction... is hard. getting this messed up
+
+// delivered to client, thus received, is 1
+// delivered by client, thus delivered id 2
+
+
 #define L1_VOLTAGE	"32.7.0"
 #define L2_VOLTAGE	"52.7.0"
 #define L3_VOLTAGE	"72.7.0"
@@ -27,16 +33,16 @@
 #define L2_POWER_DELIVERING	"42.7.0"
 #define L3_POWER_DELIVERING	"62.7.0"
 
-#define POWER_RECEIVED "1.7.0"
-#define POWER_DELIVERED "2.7.0"
+#define POWER_RECEIVED   "1.7.0"
+#define POWER_DELIVERED  "2.7.0"
 
 #define DATETIME	"1.0.0"
 
-#define	POWER_RECEIVING_LO	"1.8.1"
-#define	POWER_RECEIVING_HI	"1.8.2"
+#define	POWER_RECEIVED_LO	"1.8.1"
+#define	POWER_RECEIVED_HI	"1.8.2"
 
-#define	POWER_DELIVERING_LO	"2.8.1"
-#define	POWER_DELIVERING_HI	"2.8.2"
+#define	POWER_DELIVERED_LO	"2.8.1"
+#define	POWER_DELIVERED_HI	"2.8.2"
 
 #define TARIFF	"96.14.0"
 
@@ -52,22 +58,16 @@ meterstand_t dsmr_parse(char *data, size_t size) {
 	// clang-format off
 	meterstand.phases[0].u_volt =
 	meterstand.phases[0].i_ampere =
-	meterstand.phases[0].e_received_kilowatt =
-	meterstand.phases[0].e_delivered_kilowatt =
-	meterstand.phases[0].p_receiving =
-	meterstand.phases[0].p_delivering =
+	meterstand.phases[0].p_receiving_kilowatt =
+	meterstand.phases[0].p_delivering_kilowatt =
 	meterstand.phases[1].u_volt =
 	meterstand.phases[1].i_ampere =
-	meterstand.phases[1].e_received_kilowatt =
-	meterstand.phases[1].e_delivered_kilowatt =
-	meterstand.phases[1].p_receiving =
-	meterstand.phases[1].p_delivering =
+	meterstand.phases[1].p_receiving_kilowatt =
+	meterstand.phases[1].p_delivering_kilowatt =
 	meterstand.phases[2].u_volt =
 	meterstand.phases[2].i_ampere =
-	meterstand.phases[2].e_received_kilowatt =
-	meterstand.phases[2].e_delivered_kilowatt =
-	meterstand.phases[2].p_receiving =
-	meterstand.phases[2].p_delivering =
+	meterstand.phases[2].p_receiving_kilowatt =
+	meterstand.phases[2].p_delivering_kilowatt =
 	meterstand.energy.hi_delivered_kilowatthour =
 	meterstand.energy.hi_received_kilowatthour =
 	meterstand.energy.lo_delivered_kilowatthour =
@@ -160,45 +160,45 @@ meterstand_t dsmr_parse(char *data, size_t size) {
 	if (entry) {
 		entry = strstr(entry, "(");
 		if (entry)
-			meterstand.phases[0].e_received_kilowatt = strtof(entry + 1, NULL);
+			meterstand.phases[0].p_receiving_kilowatt = strtof(entry + 1, NULL);
 	}
 
 	entry = strstr(data, L2_POWER_RECEIVING);
 	if (entry) {
 		entry = strstr(entry, "(");
 		if (entry)
-			meterstand.phases[1].e_received_kilowatt = strtof(entry + 1, NULL);
+			meterstand.phases[1].p_receiving_kilowatt = strtof(entry + 1, NULL);
 	}
 
 	entry = strstr(data, L3_POWER_RECEIVING);
 	if (entry) {
 		entry = strstr(entry, "(");
 		if (entry)
-			meterstand.phases[2].e_received_kilowatt = strtof(entry + 1, NULL);
+			meterstand.phases[2].p_receiving_kilowatt = strtof(entry + 1, NULL);
 	}
 
 	entry = strstr(data, L1_POWER_DELIVERING);
 	if (entry) {
 		entry = strstr(entry, "(");
 		if (entry)
-			meterstand.phases[0].e_delivered_kilowatt = strtof(entry + 1, NULL);
+			meterstand.phases[0].p_delivering_kilowatt = strtof(entry + 1, NULL);
 	}
 
 	entry = strstr(data, L2_POWER_DELIVERING);
 	if (entry) {
 		entry = strstr(entry, "(");
 		if (entry)
-			meterstand.phases[1].e_delivered_kilowatt = strtof(entry + 1, NULL);
+			meterstand.phases[1].p_delivering_kilowatt = strtof(entry + 1, NULL);
 	}
 
 	entry = strstr(data, L3_POWER_DELIVERING);
 	if (entry) {
 		entry = strstr(entry, "(");
 		if (entry)
-			meterstand.phases[2].e_delivered_kilowatt = strtof(entry + 1, NULL);
+			meterstand.phases[2].p_delivering_kilowatt = strtof(entry + 1, NULL);
 	}
 
-	entry = strstr(data, POWER_RECEIVING_LO);
+	entry = strstr(data, POWER_RECEIVED_LO);
 	if (entry) {
 		entry = strstr(entry, "(");
 		if (entry)
@@ -206,7 +206,7 @@ meterstand_t dsmr_parse(char *data, size_t size) {
 					NULL);
 	}
 
-	entry = strstr(data, POWER_RECEIVING_HI);
+	entry = strstr(data, POWER_RECEIVED_HI);
 	if (entry) {
 		entry = strstr(entry, "(");
 		if (entry)
@@ -214,7 +214,7 @@ meterstand_t dsmr_parse(char *data, size_t size) {
 					NULL);
 	}
 
-	entry = strstr(data, POWER_DELIVERING_LO);
+	entry = strstr(data, POWER_DELIVERED_LO);
 	if (entry) {
 		entry = strstr(entry, "(");
 		if (entry)
@@ -222,7 +222,7 @@ meterstand_t dsmr_parse(char *data, size_t size) {
 					NULL);
 	}
 
-	entry = strstr(data, POWER_DELIVERING_HI);
+	entry = strstr(data, POWER_DELIVERED_HI);
 	if (entry) {
 		entry = strstr(entry, "(");
 		if (entry)

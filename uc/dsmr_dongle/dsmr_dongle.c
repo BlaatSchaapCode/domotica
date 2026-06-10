@@ -500,7 +500,7 @@ bscp_handler_status_t dsmr_handler(bscp_protocol_packet_t *packet,
 		break;
 	}
 
-	dsmr_send_energy();
+	//dsmr_send_energy();
 
 	return BSCP_HANDLER_STATUS_OK;
 }
@@ -835,8 +835,14 @@ void dsmr_test() {
 
 	meterstand = dsmr_parse(test, sizeof(test));
 }
+
+#include "/home/andre/uc/mcu32regs.h"
+
 int main() {
 	SEGGER_RTT_Init();
+
+	mcu32f1_rcc_t * rcc = (mcu32f1_rcc_t *)(RCC_BASE);
+
 
 	puts("BlaatSchaap Domotica: DSMR");
 	printf("Serial: %s\n", get_serial_string());
@@ -918,30 +924,30 @@ int main() {
 		radio_process();	//timekeeper("radio_process");
 
 
-		if (test < get_time_ms()) {
-			 test = get_time_ms() + 1000;
-			 dsmr_send_energy();
+//		if (test < get_time_ms()) {
+//			 test = get_time_ms() + 1000;
+//			 dsmr_send_energy();
+//		}
+
+		if (dsmr_send_phase1_flag) {
+			dsmr_send_phase1_flag = false;
+			dsmr_send_phase1();
 		}
 
-//		if (dsmr_send_phase1_flag) {
-//			dsmr_send_phase1_flag = false;
-//			dsmr_send_phase1();
-//		}
-//
-//		if (dsmr_send_phase2_flag) {
-//			dsmr_send_phase2_flag = false;
-//			dsmr_send_phase2();
-//		}
-//
-//		if (dsmr_send_phase3_flag) {
-//			dsmr_send_phase3_flag = false;
-//			dsmr_send_phase3();
-//		}
-//
-//		if (dsmr_send_energy_flag) {
-//			dsmr_send_energy_flag = false;
-//			dsmr_send_energy();
-//		}
+		if (dsmr_send_phase2_flag) {
+			dsmr_send_phase2_flag = false;
+			dsmr_send_phase2();
+		}
+
+		if (dsmr_send_phase3_flag) {
+			dsmr_send_phase3_flag = false;
+			dsmr_send_phase3();
+		}
+
+		if (dsmr_send_energy_flag) {
+			dsmr_send_energy_flag = false;
+			dsmr_send_energy();
+		}
 
 	}
 }
