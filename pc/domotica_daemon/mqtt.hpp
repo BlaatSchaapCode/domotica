@@ -10,7 +10,9 @@
 
 #include <string>
 
-#include <mosquittopp.h>
+// warning: #warning "Please replace '#include <mosquittopp.h> with #include <mosquitto/libmosquittopp.h>"
+// #include <mosquittopp.h>
+#include <mosquitto/libmosquittopp.h>
 
 class mqqt_test : public mosqpp::mosquittopp {
 public:

@@ -10,7 +10,11 @@
 #include <thread>
 
 #include "mqtt.hpp"
-#include <mosquittopp.h>
+
+// warning: #warning "Please replace '#include <mosquittopp.h> with #include <mosquitto/libmosquittopp.h>"
+// #include <mosquittopp.h>
+#include <mosquitto/libmosquittopp.h>
+
 #include <nlohmann/json.hpp>
 
 #include "utils/logger.hpp"
