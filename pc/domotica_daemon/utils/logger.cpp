@@ -31,9 +31,12 @@ void log_impl2(LogLevel level, const char *file, int line, std::string_view msg)
     printf("%s %s%16s:%-4d %s\n", getTimeString().c_str(), get_label(level), file, line, msg.data());
 
 	static FILE * logfile = nullptr;
-	if (!logfile) {
-		logfile = fopen("domotica.log","a");
-	}
+
+	// Disable logging to file
+	//	if (!logfile) {
+	//		logfile = fopen("domotica.log","a");
+	//	}
+
 	if (logfile) {
 		fprintf(logfile, "%s %s%16s:%-4d %s\n", getTimeString().c_str(), get_label(level), file, line, msg.data());
 	}

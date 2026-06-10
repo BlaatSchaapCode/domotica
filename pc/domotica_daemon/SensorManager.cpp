@@ -554,6 +554,9 @@ void SensorManager::dongleNodeCommunicationStatus(uint32_t dongle_id,
                                                   uint8_t node_id,
                                                   uint8_t status,
                                                   uint8_t command) {
+  // Disable status logging into database
+  return;
+
   //----------
   // Begin Logging dongle reponse to database
   //----------
